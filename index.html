@@ -351,7 +351,12 @@
         // --- СЕТЬ (ОБРАЩЕНИЕ НАПРЯМУЮ К СЕРВЕРУ БЕЗ ВНУТРЕННИХ ПУТЕЙ) ---
         function createRoom() {
             isHost = true; 
-            peer = new Peer(); // Чистый вызов без параметров подключается к дефолтному облаку корректно
+            peer = new Peer({
+    host: 'xfenix.ru',
+    port: 443,
+    secure: true,
+    path: '/'
+}); // Чистый вызов без параметров подключается к дефолтному облаку корректно
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
@@ -370,7 +375,12 @@
             const code = document.getElementById('room-code-input').value.trim();
             if (!code) return;
             isHost = false; activeRoomId = code; 
-            peer = new Peer(); // Чистый вызов
+            peer = new Peer({
+    host: 'xfenix.ru',
+    port: 443,
+    secure: true,
+    path: '/'
+});
 
             peer.on('open', (id) => {
                 myId = id; hostConn = peer.connect(code);
