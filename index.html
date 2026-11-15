@@ -350,34 +350,60 @@
 
         // --- СЕТЬ ---
         function createRoom() {
-            isHost = true; peer = new Peer();
-            peer.on('open', (id) => {
-                myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0] }];
-                document.getElementById('lobby').style.display = 'none';
-                document.getElementById('game-screen').style.display = 'grid';
-                syncUI();
-            });
-            peer.on('connection', (conn) => {
-                clientConns.push(conn);
-                conn.on('data', (data) => handleHostData(data, conn));
-            });
-        }
+    isHost = true;
+    
+    // ИСПРАВЛЕНИЕ: Добавляем настройки безопасности для PeerJS
+    peer = new Peer({
+        host: '0.peerjs.com',
+        port: 443,
+        secure: true
+    });
 
-        function joinRoom() {
-            const code = document.getElementById('room-code-input').value.trim();
-            if (!code) return;
-            isHost = false; activeRoomId = code; peer = new Peer();
-            peer.on('open', (id) => {
-                myId = id; hostConn = peer.connect(code);
-                hostConn.on('open', () => {
-                    document.getElementById('lobby').style.display = 'none';
-                    document.getElementById('game-screen').style.display = 'grid';
-                    hostConn.send({ type: 'JOIN', name: document.getElementById('username').value || 'Игрок' });
-                });
-                hostConn.on('data', (data) => handleClientData(data));
-            });
-        }
+    peer.on('open', (id) => {
+        myId = id;
+        activeRoomId = id;
+        document.getElementById('room-status').innerText = `Хост комнаты (${id.slice(0, 6)}...)`;
+        players = [{
+            id: myId,
+            name: document.getElementById('username').value || 'Хост',
+            money: 1500,
+            pos: 0,
+            color: PLAYER_COLORS[0]
+        }];
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'grid';
+        syncUI();
+    });
+    peer.on('connection', (conn) => {
+        clientConns.push(conn);
+        conn.on('data', (data) => handleHostData(data, conn));
+    });
+}
+
+     function joinRoom() {
+    const code = document.getElementById('room-code-input').value.trim();
+    if (!code) return;
+    isHost = false; 
+    activeRoomId = code; 
+    
+    // ИСПРАВЛЕНИЕ: Добавляем настройки безопасности для PeerJS и здесь
+    peer = new Peer({
+        host: '0.peerjs.com',
+        port: 443,
+        secure: true
+    });
+
+    peer.on('open', (id) => {
+        myId = id; 
+        hostConn = peer.connect(code);
+        hostConn.on('open', () => {
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'grid';
+            hostConn.send({ type: 'JOIN', name: document.getElementById('username').value || 'Игрок' });
+        });
+        hostConn.on('data', (data) => handleClientData(data));
+    });
+}
 
         function handleHostData(data, conn) {
             if (data.type === 'JOIN' && players.length < 6) {
