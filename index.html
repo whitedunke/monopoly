@@ -75,10 +75,49 @@
         .center-main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
         .brand-logo { font-size: clamp(18px, 2vw, 26px); font-weight: 800; letter-spacing: 3px; color: #1e293b; }
         
-        .dice-area { display: flex; gap: 14px; margin: 2px 0; }
-        .die { width: 50px; height: 50px; background: #fff; border: 2px solid #cbd5e1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #1e293b; }
-        .die.rolling { animation: diceShake 0.14s infinite ease-in-out; background: #fef3c7; border-color: var(--accent-gold); }
-        @keyframes diceShake { 0% { transform: translate(0, 0) scale(1.05); } 25% { transform: translate(-4px, -4px) rotate(-15deg); } 50% { transform: translate(4px, 4px) rotate(15deg); } 75% { transform: translate(-4px, 4px) rotate(-15deg); } 100% { transform: translate(0, 0); } }
+        /* --- НОВАЯ АНИМАЦИЯ КУБИКОВ --- */
+        .dice-area { display: flex; gap: 20px; margin: 15px 0; perspective: 800px; }
+        .die-wrapper { position: relative; width: 60px; height: 60px; }
+        .die-shadow { position: absolute; bottom: -10px; left: 5%; width: 90%; height: 10px; background: rgba(0, 0, 0, 0.25); border-radius: 50%; filter: blur(4px); transition: all 0.15s ease; z-index: 1; }
+        .die { position: relative; width: 100%; height: 100%; background: #ffffff; border-radius: 12px; box-shadow: inset 0 -4px 8px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 10px rgba(0,0,0,0.2); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); padding: 10px; z-index: 2; transform-style: preserve-3d; }
+        .pip { width: 10px; height: 10px; background: #1e293b; border-radius: 50%; box-shadow: inset 0 2px 3px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.5); align-self: center; justify-self: center; }
+        
+        .face-1 .pip:nth-child(1) { grid-area: 2 / 2; }
+        .face-2 .pip:nth-child(1) { grid-area: 1 / 1; }
+        .face-2 .pip:nth-child(2) { grid-area: 3 / 3; }
+        .face-3 .pip:nth-child(1) { grid-area: 1 / 1; }
+        .face-3 .pip:nth-child(2) { grid-area: 2 / 2; }
+        .face-3 .pip:nth-child(3) { grid-area: 3 / 3; }
+        .face-4 .pip:nth-child(1) { grid-area: 1 / 1; }
+        .face-4 .pip:nth-child(2) { grid-area: 1 / 3; }
+        .face-4 .pip:nth-child(3) { grid-area: 3 / 1; }
+        .face-4 .pip:nth-child(4) { grid-area: 3 / 3; }
+        .face-5 .pip:nth-child(1) { grid-area: 1 / 1; }
+        .face-5 .pip:nth-child(2) { grid-area: 1 / 3; }
+        .face-5 .pip:nth-child(3) { grid-area: 2 / 2; }
+        .face-5 .pip:nth-child(4) { grid-area: 3 / 1; }
+        .face-5 .pip:nth-child(5) { grid-area: 3 / 3; }
+        .face-6 .pip:nth-child(1) { grid-area: 1 / 1; }
+        .face-6 .pip:nth-child(2) { grid-area: 1 / 3; }
+        .face-6 .pip:nth-child(3) { grid-area: 2 / 1; }
+        .face-6 .pip:nth-child(4) { grid-area: 2 / 3; }
+        .face-6 .pip:nth-child(5) { grid-area: 3 / 1; }
+        .face-6 .pip:nth-child(6) { grid-area: 3 / 3; }
+
+        .die.rolling { animation: tumble 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite; }
+        .die-wrapper.rolling .die-shadow { animation: shadowPulse 0.8s infinite; }
+        
+        @keyframes tumble {
+            0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
+            25% { transform: translateY(-25px) rotateX(180deg) rotateY(90deg) rotateZ(45deg) scale(1.1); }
+            50% { transform: translateY(-40px) rotateX(360deg) rotateY(180deg) rotateZ(90deg) scale(1.15); }
+            75% { transform: translateY(-15px) rotateX(540deg) rotateY(270deg) rotateZ(135deg) scale(1.05); }
+            100% { transform: translateY(0) rotateX(720deg) rotateY(360deg) rotateZ(180deg) scale(1); }
+        }
+        @keyframes shadowPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(0.6); opacity: 0.1; }
+        }
 
         .action-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
         .action-buttons .btn { width: auto; padding: 8px 14px; font-size: 13px; }
@@ -142,8 +181,14 @@
                         <div style="color:#475569; font-weight:600; font-size:13px;" id="turn-banner">Ожидание...</div>
                         
                         <div class="dice-area">
-                            <div class="die" id="die-1">⚀</div>
-                            <div class="die" id="die-2">⚀</div>
+                            <div class="die-wrapper" id="die-wrap-1">
+                                <div class="die-shadow"></div>
+                                <div class="die" id="die-1"></div>
+                            </div>
+                            <div class="die-wrapper" id="die-wrap-2">
+                                <div class="die-shadow"></div>
+                                <div class="die" id="die-2"></div>
+                            </div>
                         </div>
 
                         <div class="action-buttons">
@@ -233,7 +278,6 @@
 
     <script>
         const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899'];
-        const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
         const BOARD_CELLS = [
             { id: 0, name: "ВПЕРЕД", type: "corner", icon: "➡️", sub: "+$200" },
@@ -292,6 +336,11 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
+            
+            // Инициализация кубиков при старте
+            renderDieFace(document.getElementById('die-1'), 1);
+            renderDieFace(document.getElementById('die-2'), 1);
+
             const params = new URLSearchParams(window.location.search);
             if (params.get('room')) document.getElementById('room-code-input').value = params.get('room');
         });
@@ -348,15 +397,15 @@
             });
         }
 
-        // --- СЕТЬ (ОБРАЩЕНИЕ НАПРЯМУЮ К СЕРВЕРУ БЕЗ ВНУТРЕННИХ ПУТЕЙ) ---
+        // --- СЕТЬ ---
         function createRoom() {
             isHost = true; 
             peer = new Peer({
-    host: 'xfenix.ru',
-    port: 443,
-    secure: true,
-    path: '/'
-}); // Чистый вызов без параметров подключается к дефолтному облаку корректно
+                host: 'xfenix.ru',
+                port: 443,
+                secure: true,
+                path: '/'
+            });
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
@@ -376,11 +425,11 @@
             if (!code) return;
             isHost = false; activeRoomId = code; 
             peer = new Peer({
-    host: 'xfenix.ru',
-    port: 443,
-    secure: true,
-    path: '/'
-});
+                host: 'xfenix.ru',
+                port: 443,
+                secure: true,
+                path: '/'
+            });
 
             peer.on('open', (id) => {
                 myId = id; hostConn = peer.connect(code);
@@ -604,14 +653,56 @@
             if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
         }
 
+        // Вспомогательная функция для отрисовки точек на кубике
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        // Новая красивая анимация броска
         function playDiceAnim(d1, d2, cb) {
-            document.getElementById('roll-btn').disabled = true;
-            document.getElementById('die-1').classList.add('rolling'); document.getElementById('die-2').classList.add('rolling');
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            
+            // Включаем 3D анимацию
+            die1.classList.add('rolling');
+            die2.classList.add('rolling');
+            wrap1.classList.add('rolling');
+            wrap2.classList.add('rolling');
+
+            // Быстрая смена лиц во время кувыркания для эффекта случайности
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            // Останавливаем через 800мс (длительность CSS-анимации)
             setTimeout(() => {
-                document.getElementById('die-1').classList.remove('rolling'); document.getElementById('die-2').classList.remove('rolling');
-                document.getElementById('die-1').innerText = DICE_FACES[d1-1]; document.getElementById('die-2').innerText = DICE_FACES[d2-1];
-                document.getElementById('roll-btn').disabled = false; if(cb) cb();
-            }, 500);
+                clearInterval(rollInterval);
+                
+                // Убираем класс анимации
+                die1.classList.remove('rolling');
+                die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling');
+                wrap2.classList.remove('rolling');
+
+                // Устанавливаем финальные значения
+                renderDieFace(die1, d1);
+                renderDieFace(die2, d2);
+                
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
         }
 
         function syncUI() {
