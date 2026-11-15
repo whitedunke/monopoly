@@ -288,7 +288,7 @@
         let peer = null, hostConn = null, clientConns = [];
         let isHost = false, myId = '', activeRoomId = '';
         let players = [], ownedCells = {}, currentTurnIndex = 0, turnPhase = 'ROLL', selectedCellId = null;
-        let pendingTrade = null; // Хранит текущий оффер
+        let pendingTrade = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -348,62 +348,51 @@
             });
         }
 
-        // --- СЕТЬ ---
+        // --- СЕТЬ (С ИСПРАВЛЕННЫМ ПУТЕМ PEERJS) ---
         function createRoom() {
-    isHost = true;
-    
-    // ИСПРАВЛЕНИЕ: Добавляем настройки безопасности для PeerJS
-    peer = new Peer({
-        host: '0.peerjs.com',
-        port: 443,
-        secure: true
-    });
+            isHost = true; 
+            peer = new Peer({
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                secure: true
+            });
 
-    peer.on('open', (id) => {
-        myId = id;
-        activeRoomId = id;
-        document.getElementById('room-status').innerText = `Хост комнаты (${id.slice(0, 6)}...)`;
-        players = [{
-            id: myId,
-            name: document.getElementById('username').value || 'Хост',
-            money: 1500,
-            pos: 0,
-            color: PLAYER_COLORS[0]
-        }];
-        document.getElementById('lobby').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'grid';
-        syncUI();
-    });
-    peer.on('connection', (conn) => {
-        clientConns.push(conn);
-        conn.on('data', (data) => handleHostData(data, conn));
-    });
-}
+            peer.on('open', (id) => {
+                myId = id; activeRoomId = id;
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0] }];
+                document.getElementById('lobby').style.display = 'none';
+                document.getElementById('game-screen').style.display = 'grid';
+                syncUI();
+            });
+            peer.on('connection', (conn) => {
+                clientConns.push(conn);
+                conn.on('data', (data) => handleHostData(data, conn));
+            });
+        }
 
-     function joinRoom() {
-    const code = document.getElementById('room-code-input').value.trim();
-    if (!code) return;
-    isHost = false; 
-    activeRoomId = code; 
-    
-    // ИСПРАВЛЕНИЕ: Добавляем настройки безопасности для PeerJS и здесь
-    peer = new Peer({
-        host: '0.peerjs.com',
-        port: 443,
-        secure: true
-    });
+        function joinRoom() {
+            const code = document.getElementById('room-code-input').value.trim();
+            if (!code) return;
+            isHost = false; activeRoomId = code; 
+            
+            peer = new Peer({
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                secure: true
+            });
 
-    peer.on('open', (id) => {
-        myId = id; 
-        hostConn = peer.connect(code);
-        hostConn.on('open', () => {
-            document.getElementById('lobby').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'grid';
-            hostConn.send({ type: 'JOIN', name: document.getElementById('username').value || 'Игрок' });
-        });
-        hostConn.on('data', (data) => handleClientData(data));
-    });
-}
+            peer.on('open', (id) => {
+                myId = id; hostConn = peer.connect(code);
+                hostConn.on('open', () => {
+                    document.getElementById('lobby').style.display = 'none';
+                    document.getElementById('game-screen').style.display = 'grid';
+                    hostConn.send({ type: 'JOIN', name: document.getElementById('username').value || 'Игрок' });
+                });
+                hostConn.on('data', (data) => handleClientData(data));
+            });
+        }
 
         function handleHostData(data, conn) {
             if (data.type === 'JOIN' && players.length < 6) {
@@ -415,10 +404,9 @@
             else if (data.type === 'BUILD') { processBuild(conn.peer, data.cellId); }
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
-            // Трейд логика хоста
             else if (data.type === 'TRADE_OFFER') {
-                if (data.toId === myId) handleTradeRequest(data); // Хосту предлагают
-                else { const targetConn = clientConns.find(c => c.peer === data.toId); if (targetConn) targetConn.send(data); } // Пересылка
+                if (data.toId === myId) handleTradeRequest(data);
+                else { const targetConn = clientConns.find(c => c.peer === data.toId); if (targetConn) targetConn.send(data); }
             }
             else if (data.type === 'TRADE_ACCEPT') { processTradeAccept(data.offer); }
             else if (data.type === 'TRADE_REJECT') { broadcastLog('Отказ', `${players.find(p=>p.id===data.fromId)?.name} отклонил сделку.`); }
@@ -506,7 +494,7 @@
 
             Object.keys(ownedCells).forEach(cellId => {
                 const info = ownedCells[cellId];
-                if (info.houses > 0) return; // Нельзя менять улицы с домами!
+                if (info.houses > 0) return;
 
                 const cell = BOARD_CELLS[cellId];
                 const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:8px; height:8px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
@@ -532,7 +520,7 @@
             const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
             
             if (isHost) {
-                if (targetId === myId) return; // Нельзя меняться с собой
+                if (targetId === myId) return;
                 const targetConn = clientConns.find(c => c.peer === targetId);
                 if(targetConn) targetConn.send(offerData);
             } else {
@@ -566,7 +554,6 @@
 
         function acceptTrade() {
             if(!pendingTrade) return;
-            // Проверка своих денег перед принятием
             const me = players.find(p => p.id === myId);
             if (pendingTrade.requestMoney > me.money) {
                 alert("У вас недостаточно денег!"); return;
@@ -587,11 +574,9 @@
             const p2 = players.find(p => p.id === offer.toId);
             if (!p1 || !p2) return;
 
-            // Обмен деньгами
             p1.money = p1.money - offer.offerMoney + offer.requestMoney;
             p2.money = p2.money - offer.requestMoney + offer.offerMoney;
 
-            // Обмен улицами (передаем владельца и цвет нового владельца)
             offer.offerProps.forEach(id => {
                 if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; }
             });
