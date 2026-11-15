@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Монополия Онлайн (P2P)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         :root {
             --bg-dark: #121826; --panel-bg: #1f2937; --panel-border: #374151;
@@ -348,15 +348,10 @@
             });
         }
 
-        // --- СЕТЬ (С ИСПРАВЛЕННЫМ ПУТЕМ PEERJS) ---
+        // --- СЕТЬ (ОБРАЩЕНИЕ НАПРЯМУЮ К СЕРВЕРУ БЕЗ ВНУТРЕННИХ ПУТЕЙ) ---
         function createRoom() {
             isHost = true; 
-            peer = new Peer({
-                host: '0.peerjs.com',
-                port: 443,
-                path: '/',
-                secure: true
-            });
+            peer = new Peer(); // Чистый вызов без параметров подключается к дефолтному облаку корректно
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
@@ -375,13 +370,7 @@
             const code = document.getElementById('room-code-input').value.trim();
             if (!code) return;
             isHost = false; activeRoomId = code; 
-            
-            peer = new Peer({
-                host: '0.peerjs.com',
-                port: 443,
-                path: '/',
-                secure: true
-            });
+            peer = new Peer(); // Чистый вызов
 
             peer.on('open', (id) => {
                 myId = id; hostConn = peer.connect(code);
