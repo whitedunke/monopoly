@@ -77,7 +77,7 @@
         .estate-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#294b3b;padding:2px 2px 8px;border-bottom:1px solid #e7e0d4}
         .estate-panel-heading strong{display:block;font-size:16px;font-weight:900}
         .estate-panel-heading small{display:block;color:#77756d;font-size:11px;margin-top:3px}
-        .estate-panel-mark{font-size:9px;font-weight:900;letter-spacing:.7px;color:#47745b;background:#eaf2eb;border-radius:20px;padding:6px 8px}
+        .estate-open-manager{border:0;border-radius:9px;background:#315b46;color:#fff;font-size:10px;font-weight:800;padding:9px 10px;cursor:pointer;white-space:nowrap}.estate-open-manager:hover{background:#244735;transform:translateY(-1px)}
         .estate-wallet{min-height:0;gap:12px;padding:12px;display:grid;grid-template-columns:1fr auto;align-items:center}
         .estate-player-token{width:44px;height:44px;font-size:23px}
         .estate-balance{font-size:30px}
@@ -516,7 +516,7 @@
             <button class="badge-btn" onclick="copyInviteLink()">🔗 Копировать ссылку</button>
         </header>
 
-        <div class="sidebar-left estate-sidebar"><section class="estate-dashboard" id="estate-dashboard"><div class="estate-panel-heading"><div><strong>Моё имущество</strong><small>Недвижимость и управление активами</small></div><span class="estate-panel-mark">УПРАВЛЕНИЕ</span></div>
+        <div class="sidebar-left estate-sidebar"><section class="estate-dashboard" id="estate-dashboard"><div class="estate-panel-heading"><div><strong>Моё имущество</strong><small>Недвижимость и управление активами</small></div><button type="button" class="estate-open-manager" onclick="focusEstateManagement()">Управление недвижимостью ↗</button></div>
                         <div class="estate-wallet">
                             <div class="estate-player"><div class="estate-player-token" id="estate-token">🎩</div><div><div id="estate-player-name">Игрок</div><small style="color:#68778b">Ваш капитал</small></div></div>
                             <div><div class="estate-balance" id="estate-balance">$0</div><div class="estate-income" id="estate-income">▲ $200 за круг</div></div>
@@ -1316,6 +1316,27 @@
         function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
         function useJailCard() { if (isHost) processUseJailCard(myId); else if (hostConn) hostConn.send({ type: 'USE_JAIL_CARD' }); }
         function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function focusEstateManagement() {
+            const ownedStreetIds = BOARD_CELLS
+                .filter(cell => cell.type === 'street' && ownedCells[cell.id]?.ownerId === myId)
+                .map(cell => cell.id);
+            const selectedIsMine = selectedCellId !== null && ownedCells[selectedCellId]?.ownerId === myId;
+            if (!selectedIsMine && ownedStreetIds.length) {
+                const buildable = ownedStreetIds.find(id => {
+                    const cell = BOARD_CELLS[id];
+                    const group = BOARD_CELLS.filter(item => item.type === 'street' && item.color === cell.color);
+                    return group.length > 0 && group.every(item => ownedCells[item.id]?.ownerId === myId && !ownedCells[item.id]?.mortgaged);
+                });
+                selectedCellId = buildable ?? ownedStreetIds[0];
+                syncUI();
+            }
+            const assets = document.getElementById('estate-property-list');
+            if (assets) {
+                assets.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                assets.focus?.({ preventScroll: true });
+            }
+        }
+
         function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
