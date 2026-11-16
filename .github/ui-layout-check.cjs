@@ -72,6 +72,7 @@ const path = require('path');
         viewport:{width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth},
         game:rect(game), panel:rect(panel), wallet:rect(wallet), player:rect(player), balance:rect(balance),
         heading:rect(heading), manager:rect(manage), board:rect(board),
+        boardSquare:!board || Math.abs(board.getBoundingClientRect().width-board.getBoundingClientRect().height)<=2,
         walletOverlap:overlap(rect(player),rect(balance)),
         managerOverlap:overlap(rect(heading),rect(manage)),
         buttonsInside,
@@ -86,6 +87,7 @@ const path = require('path');
     if (!metrics.buttonsInside) problems.push('action button outside panel');
     if (metrics.panel && metrics.panel.right > c.width + 1) problems.push('estate panel outside viewport');
     if (metrics.board && (metrics.board.x < -1 || metrics.board.right > c.width + 1)) problems.push('board outside viewport');
+    if (!metrics.boardSquare) problems.push('board is not square');
     if (pageErrors.length) problems.push('browser JS errors: ' + pageErrors.join(' | '));
 
     results.push({ case:c.name, metrics, problems, pageErrors });
