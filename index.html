@@ -966,7 +966,7 @@
         }
         function processRoll(peerId) {
             const p = players[currentTurnIndex];
-            if (gameOver || !p || p.id !== peerId || turnPhase !== 'ROLL') return;
+            if (gameOver || pendingCardAckId || !p || p.id !== peerId || turnPhase !== 'ROLL') return;
 
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
@@ -979,7 +979,7 @@
                 turnPhase = 'ACTION';
                 sendToJail(p);
                 clientConns.forEach(c => c.send({ type:'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice:[d1,d2] }));
-                playDiceAnim(d1,d2, syncUI);
+                playDiceAnim(d1,d2,syncUI);
                 broadcastLog('🚔 Тюрьма', p.name + ' выбросил три дубля подряд и отправляется в тюрьму.');
                 return;
             }
@@ -997,8 +997,35 @@
                     } else {
                         turnPhase = 'ACTION';
                         clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
-                        playDiceAnim(d1, d2, syncUI);
-            // Resolve the landing immediately; card draws must never depend on the dice animation callback.
+                        playDiceAnim(d1, d2, () => { syncUI(); broadcastLog('🚔 Тюрьма', `${p.name} не смог выйти из тюрьмы.`); });
+                        return;
+                    }
+                }
+            }
+
+            if (!p.inJail) {
+                const newPos = (p.pos + d1 + d2) % 40;
+                if (newPos < oldPos) {
+                    p.money += 200;
+                    broadcastLog('💰 Зарплата', `${p.name} проходит ВПЕРЕД и получает $200.`);
+                }
+                p.pos = newPos;
+            }
+
+            turnPhase = 'ACTION';
+            selectedCellId = p.pos;
+            const cell = BOARD_CELLS[p.pos];
+
+            if (ownedCells[cell.id] && ownedCells[cell.id].ownerId !== p.id && !ownedCells[cell.id].mortgaged && !p.inJail) {
+                const rent = calculateRent(cell.id, d1 + d2);
+                if(startDebtResolution(p,rent,ownedCells[cell.id].ownerId,'рента за «'+cell.name+'»')){broadcastState();return;}
+            }
+            if(pendingDebt?.debtorId===p.id){broadcastState();return;}
+
+            clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
+            playDiceAnim(d1,d2,syncUI);
+
+            // Resolve the destination immediately. Card display and turn lock do not depend on animation callbacks.
             if (cell.id !== 30) broadcastLog('🎲 Ход', `${p.name} пошел на «${cell.name}».`);
             if (cell.id === 30) sendToJail(p);
             else if (cell.type === 'chance') drawCard('chance', p);
