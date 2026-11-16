@@ -559,7 +559,7 @@
             <div class="drawn-card-divider"></div>
             <div class="drawn-card-text" id="drawn-card-text"></div>
             <div class="drawn-card-player" id="drawn-card-player"></div>
-            <button class="btn" onclick="closeDrawnCard()">Взять карту</button>
+            <button class="btn" onclick="takeDrawnCard()">Взять карту</button>
         </div>
     </div>
 
@@ -726,6 +726,7 @@
         let auctionState = null;
         let bankHouses = 32, bankHotels = 12;
         let pendingDebt = null;
+        let pendingCardAckId = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -850,6 +851,7 @@
             else if (data.type === 'REDEEM') processRedeem(conn.peer, data.cellId);
             else if (data.type === 'SELL_ASSET') processSellAsset(conn.peer, data.cellId);
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
+            else if (data.type === 'ACK_CARD') { processAcknowledgeCard(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
                 if(data.fromId!==conn.peer||!players.some(p=>p.id===data.toId))return;
@@ -867,7 +869,7 @@
                 auctionState = data.auctionState || null;
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
-                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null;
+                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardAckId = data.pendingCardAckId ?? null;
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'DRAWN_CARD') {
@@ -931,7 +933,7 @@
         function drawCard(type,p) {
             const deck=type==='chance'?chanceDeck:chestDeck,source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
             if(!deck.length)deck.push(...shuffleDeck([...source]));
-            const card=deck.shift(); let creditorId=null;
+            const card=deck.shift(); let creditorId=null; pendingCardAckId=p.id;
             broadcastLog('🃏 '+(type==='chance'?'Шанс':'Общественная казна'),p.name+': '+card.text);
             showDrawnCard(type,card,p.name);
             clientConns.forEach(c=>c.send({type:'DRAWN_CARD',cardType:type,card,playerName:p.name}));
@@ -1105,7 +1107,7 @@
 
         function processEndTurn(peerId) {
             const p = players[currentTurnIndex];
-            if (!gameOver && !pendingDebt && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
+            if (!gameOver && !pendingDebt && !pendingCardAckId && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -1251,9 +1253,12 @@
             document.getElementById('drawn-card-heading').textContent=isChance?'ШАНС':'ОБЩЕСТВЕННАЯ КАЗНА';
             document.getElementById('drawn-card-text').textContent=card.text;
             document.getElementById('drawn-card-player').textContent='Карта игрока: '+(playerName||'участник');
+            const takeButton=panel.querySelector('button'); if(takeButton)takeButton.disabled=!!pendingCardAckId&&pendingCardAckId!==myId;
             overlay.style.display='flex';
         }
-        function closeDrawnCard() { const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; }
+        function takeDrawnCard() { if(!pendingCardAckId||pendingCardAckId!==myId)return; if(isHost)processAcknowledgeCard(myId); else if(hostConn)hostConn.send({type:'ACK_CARD'}); }
+        function closeDrawnCard() { takeDrawnCard(); }
+        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId)return; pendingCardAckId=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
@@ -1266,7 +1271,7 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt};
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardAckId};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
@@ -1331,7 +1336,7 @@
             const isActivePlayersTurn = !!(activePlayer && activePlayer.id === myId);
             const endTurnButton = document.getElementById('end-turn-btn');
             if (endTurnButton) {
-                const canFinishTurn = isActivePlayersTurn && turnPhase === 'ACTION' && !gameOver && !auctionState && !pendingDebt;
+                const canFinishTurn = isActivePlayersTurn && turnPhase === 'ACTION' && !gameOver && !auctionState && !pendingDebt && !pendingCardAckId;
                 endTurnButton.style.display = canFinishTurn ? 'inline-flex' : 'none';
                 endTurnButton.disabled = !canFinishTurn;
                 endTurnButton.textContent = (canFinishTurn && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail)
@@ -1344,7 +1349,7 @@
             const purchaseIsMyTurn = !!(activePlayer && activePlayer.id === myId);
             const purchaseIsFree = !!(purchaseCell && purchaseCell.price > 0 && !ownedCells[purchaseCell.id]);
             const purchaseIsAction = turnPhase === 'ACTION' && !activePlayer?.inJail && !gameOver;
-            const showPurchaseOffer = purchaseIsMyTurn && purchaseIsAction && purchaseIsFree && !pendingDebt;
+            const showPurchaseOffer = purchaseIsMyTurn && purchaseIsAction && purchaseIsFree && !pendingDebt && !pendingCardAckId;
             const purchaseButton = document.getElementById('buy-btn');
             const purchaseMessage = document.getElementById('purchase-hint');
             if (purchaseButton && purchaseMessage) {
