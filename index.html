@@ -150,6 +150,24 @@
         }
         .center-main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
         
+        /* Колоды карт в центре игрового поля */
+        .board-decks{position:absolute;inset:0;z-index:3;pointer-events:none}
+        .board-deck{position:absolute;top:9%;width:clamp(76px,9.2vw,122px);height:clamp(112px,13.6vw,166px);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px}
+        .board-deck.chance{left:2.2%;transform:rotate(-5deg)}
+        .board-deck.chest{right:2.2%;transform:rotate(5deg)}
+        .deck-stack{position:relative;width:82%;height:76%;filter:drop-shadow(0 7px 7px rgba(36,42,31,.2))}
+        .deck-card{position:absolute;inset:0;border-radius:9px;border:2px solid #fff9e9;background:repeating-linear-gradient(45deg,rgba(255,255,255,.12) 0 4px,transparent 4px 8px),linear-gradient(145deg,#2869cf,#17458e);box-shadow:inset 0 0 0 3px rgba(255,255,255,.35),0 2px 5px rgba(0,0,0,.16)}
+        .deck-card:nth-child(1){transform:translate(-5px,5px) rotate(-7deg)}
+        .deck-card:nth-child(2){transform:translate(3px,2px) rotate(4deg);background:repeating-linear-gradient(45deg,rgba(255,255,255,.13) 0 4px,transparent 4px 8px),linear-gradient(145deg,#397cdd,#1c519e)}
+        .deck-card:nth-child(3){transform:rotate(-1deg)}
+        .board-deck.chest .deck-card{background:repeating-linear-gradient(45deg,rgba(255,255,255,.13) 0 4px,transparent 4px 8px),linear-gradient(145deg,#d6a33f,#966019)}
+        .deck-emblem{position:absolute;inset:0;display:grid;place-items:center;color:#fff8e8;font-family:Georgia,serif;font-size:clamp(19px,2.3vw,31px);font-weight:900;text-shadow:0 2px 3px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.5);margin:8px;border-radius:5px}
+        .deck-name{font-size:clamp(9px,.85vw,12px);font-weight:900;letter-spacing:1px;color:#315640;text-align:center;text-shadow:0 1px #fff}
+        .deck-count{font-size:10px;font-weight:800;color:#6b665b;background:rgba(255,253,247,.82);padding:2px 7px;border-radius:10px}
+        .center-main{position:relative;z-index:2}
+        @media(max-width:900px){.board-deck{top:5%;width:68px;height:96px}.deck-name{font-size:8px}.deck-count{font-size:8px}.deck-emblem{font-size:18px}}
+        @media(max-width:680px){.board-deck{top:2%;width:48px;height:70px;gap:3px}.board-deck.chance{left:1%}.board-deck.chest{right:1%}.deck-stack{height:72%}.deck-name{font-size:7px;letter-spacing:0}.deck-count{font-size:7px;padding:1px 4px}.deck-emblem{font-size:14px;margin:5px}}
+        
         /* КУБИКИ */
         .dice-area { display: flex; gap: 24px; margin: 15px 0; perspective: 1000px; }
         .die-wrapper { position: relative; width: 64px; height: 64px; }
@@ -410,6 +428,16 @@
         <div class="board-wrapper">
             <div class="board" id="board">
                 <div class="board-center">
+                    <div class="board-decks" aria-label="Колоды игровых карт">
+                        <div class="board-deck chance" aria-label="Колода Шанс">
+                            <div class="deck-stack" aria-hidden="true"><div class="deck-card"></div><div class="deck-card"></div><div class="deck-card"></div><div class="deck-emblem">?</div></div>
+                            <div class="deck-name">ШАНС</div><div class="deck-count" id="chance-deck-count">16 карт</div>
+                        </div>
+                        <div class="board-deck chest" aria-label="Колода Общественная казна">
+                            <div class="deck-stack" aria-hidden="true"><div class="deck-card"></div><div class="deck-card"></div><div class="deck-card"></div><div class="deck-emblem">₽</div></div>
+                            <div class="deck-name">КАЗНА</div><div class="deck-count" id="chest-deck-count">16 карт</div>
+                        </div>
+                    </div>
                     <div class="center-main">
                         <div class="brand-logo">MONOPOLY</div>
                         <div style="color:#334155; font-weight:800; font-size:15px; letter-spacing:1px;" id="turn-banner">Ожидание...</div>
@@ -1244,6 +1272,10 @@
             renderBoard();
             const activePlayer = players[currentTurnIndex];
             document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+            const chanceCount = document.getElementById('chance-deck-count');
+            const chestCount = document.getElementById('chest-deck-count');
+            if (chanceCount) chanceCount.textContent = (chanceDeck.length || CHANCE_CARDS.length) + ' карт';
+            if (chestCount) chestCount.textContent = (chestDeck.length || CHEST_CARDS.length) + ' карт';
 
             const myPosCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : BOARD_CELLS[0];
             const isActivePlayersTurn = !!(activePlayer && activePlayer.id === myId);
