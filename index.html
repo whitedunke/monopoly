@@ -802,45 +802,46 @@
             const old=p.pos;
             if(target<old&&collectGo){p.money+=200;broadcastLog('💰 Зарплата',p.name+' проходит «ВПЕРЁД» и получает $200.');}
             p.pos=target;
-            const cell=BOARD_CELLS[target], asset=ownedCells[target];
+            const cell=BOARD_CELLS[target],asset=ownedCells[target]; let creditorId=null;
             if(asset&&asset.ownerId!==p.id&&!asset.mortgaged){
                 const owner=players.find(pl=>pl.id===asset.ownerId),rent=calculateRent(target,lastDice[0]+lastDice[1]);
-                if(owner&&rent){p.money-=rent;owner.money+=rent;broadcastLog('💸 Рента',p.name+' платит $'+rent+' за «'+cell.name+'».');}
+                if(owner&&rent){p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('💸 Рента',p.name+' платит $'+rent+' за «'+cell.name+'».');}
             }
             if(cell.type==='tax'){p.money-=cell.price;broadcastLog('💎 Налог',p.name+' платит $'+cell.price+'.');}
+            return creditorId;
         }
         function drawCard(type,p) {
-            const deck=type==='chance'?chanceDeck:chestDeck, source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
+            const deck=type==='chance'?chanceDeck:chestDeck,source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
             if(!deck.length)deck.push(...shuffleDeck([...source]));
-            const card=deck.shift();
+            const card=deck.shift(); let creditorId=null;
             broadcastLog('🃏 '+(type==='chance'?'Шанс':'Общественная казна'),p.name+': '+card.text);
             switch(card.type){
-                case 'cash': p.money+=card.amount; break;
-                case 'move': resolveCardMovement(p,card.pos,card.go!==false); break;
-                case 'back': resolveCardMovement(p,(p.pos-card.amount+40)%40,false); break;
-                case 'jail': sendToJail(p); break;
-                case 'jailFree': p.jailCards=p.jailCards||[]; p.jailCards.push(type); break;
-                case 'birthday': players.filter(x=>x.id!==p.id).forEach(x=>{x.money-=10;p.money+=10;}); break;
-                case 'repairs': {
-                    let due=0;
-                    Object.keys(ownedCells).forEach(id=>{if(ownedCells[id].ownerId===p.id){const n=ownedCells[id].houses||0;due+=n===5?card.hotel:n*card.house;}});
-                    p.money-=due; broadcastLog('🏠 Ремонт',p.name+' платит $'+due+'.'); break;
+                case 'cash':p.money+=card.amount;break;
+                case 'move':creditorId=resolveCardMovement(p,card.pos,card.go!==false);break;
+                case 'back':creditorId=resolveCardMovement(p,(p.pos-card.amount+40)%40,false);break;
+                case 'jail':sendToJail(p);break;
+                case 'jailFree':p.jailCards=p.jailCards||[];p.jailCards.push(type);break;
+                case 'birthday':
+                    players.filter(x=>x.id!==p.id).forEach(x=>{x.money-=10;p.money+=10;if(x.money<0)handleBankruptcy(x,p.id);});
+                    break;
+                case 'repairs':{
+                    let due=0;Object.keys(ownedCells).forEach(id=>{if(ownedCells[id].ownerId===p.id){const n=ownedCells[id].houses||0;due+=n===5?card.hotel:n*card.house;}});
+                    p.money-=due;broadcastLog('🏠 Ремонт',p.name+' платит $'+due+'.');break;
                 }
-                case 'nearestRail': {
-                    const target=[5,15,25,35].find(x=>x>p.pos)??5; resolveCardMovement(p,target,target<=p.pos);
+                case 'nearestRail':{
+                    const target=[5,15,25,35].find(x=>x>p.pos)??5;creditorId=resolveCardMovement(p,target,target<=p.pos);
                     const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
-                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const rent=calculateRent(target,lastDice[0]+lastDice[1])*2;p.money-=rent;owner.money+=rent;broadcastLog('🚂 Двойная рента','$'+rent+'.');} break;
+                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const rent=calculateRent(target,lastDice[0]+lastDice[1])*2;p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('🚂 Двойная рента','$'+rent+'.');}break;
                 }
-                case 'nearestUtility': {
-                    const target=[12,28].find(x=>x>p.pos)??12; resolveCardMovement(p,target,target<=p.pos);
+                case 'nearestUtility':{
+                    const target=[12,28].find(x=>x>p.pos)??12;creditorId=resolveCardMovement(p,target,target<=p.pos);
                     const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
-                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);p.money-=rent;owner.money+=rent;broadcastLog('💡 Коммунальная служба','$'+rent+'.');} break;
+                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('💡 Коммунальная служба','$'+rent+'.');}break;
                 }
             }
             if(card.type!=='jailFree')deck.push(card);
-            if(p.money<0)handleBankruptcy(p,null);else broadcastState();
+            if(p.money<0)handleBankruptcy(p,creditorId);else broadcastState();
         }
-
         function processRoll(peerId) {
             const p = players[currentTurnIndex];
             if (gameOver || !p || p.id !== peerId || turnPhase !== 'ROLL') return;
