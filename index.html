@@ -253,6 +253,20 @@
         .chat-input-row button { background: #2563eb; color: #fff; border: none; padding: 0 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .chat-input-row button:hover { background: #1d4ed8; }
 
+        /* Карточки «Шанс» и «Общественная казна» */
+        .drawn-card-overlay{display:none;position:fixed;inset:0;z-index:120;background:rgba(25,32,28,.62);backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:18px}
+        .drawn-card{--card-accent:#2876c8;width:min( min(92vw,390px),390px);min-height:470px;position:relative;overflow:hidden;border-radius:22px;background:#fffaf0;color:#28352d;border:1px solid rgba(80,65,40,.2);box-shadow:0 28px 90px rgba(0,0,0,.38);padding:25px 25px 22px;display:flex;flex-direction:column;align-items:center;text-align:center}
+        .drawn-card.chest{--card-accent:#c28a25}
+        .drawn-card:before{content:"";position:absolute;inset:10px;border:2px solid var(--card-accent);border-radius:15px;pointer-events:none;opacity:.7}
+        .drawn-card-top{font-size:12px;font-weight:900;letter-spacing:3px;color:var(--card-accent);margin-top:10px}
+        .drawn-card-symbol{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--card-accent) 13%,white);border:2px solid color-mix(in srgb,var(--card-accent) 35%,white);font-size:58px;margin:27px 0 20px;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+        .drawn-card-heading{font-family:Georgia,serif;font-size:30px;line-height:1.1;font-weight:900;letter-spacing:1px;color:#294b3a}
+        .drawn-card-divider{width:70px;height:4px;border-radius:9px;background:var(--card-accent);margin:20px auto}
+        .drawn-card-text{font-family:Georgia,serif;font-size:21px;line-height:1.45;font-weight:700;max-width:300px;min-height:105px;display:flex;align-items:center;justify-content:center}
+        .drawn-card-player{font-size:13px;color:#77715f;font-weight:800;margin-top:auto;margin-bottom:17px}
+        .drawn-card .btn{width:100%;max-width:250px;background:var(--card-accent);color:white;border:0;min-height:46px;font-weight:900}
+        @media(max-width:480px){.drawn-card{min-height:420px;padding:20px}.drawn-card-symbol{width:86px;height:86px;font-size:48px;margin:22px 0 16px}.drawn-card-heading{font-size:26px}.drawn-card-text{font-size:18px;min-height:90px}}
+        
         /* МОДАЛЬНЫЕ ОКНА */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 50; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { 
@@ -464,6 +478,18 @@
                     <button onclick="sendChat()">➤</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="drawn-card-overlay" id="drawn-card-overlay" role="dialog" aria-modal="true" aria-labelledby="drawn-card-heading" onclick="if(event.target===this) closeDrawnCard()">
+        <div class="drawn-card" id="drawn-card">
+            <div class="drawn-card-top" id="drawn-card-top">СОБЫТИЕ</div>
+            <div class="drawn-card-symbol" id="drawn-card-symbol">❓</div>
+            <div class="drawn-card-heading" id="drawn-card-heading">ШАНС</div>
+            <div class="drawn-card-divider"></div>
+            <div class="drawn-card-text" id="drawn-card-text"></div>
+            <div class="drawn-card-player" id="drawn-card-player"></div>
+            <button class="btn" onclick="closeDrawnCard()">Понятно</button>
         </div>
     </div>
 
@@ -773,6 +799,8 @@
                 bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels;
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
+            } else if (data.type === 'DRAWN_CARD') {
+                showDrawnCard(data.cardType,data.card,data.playerName);
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
         }
@@ -821,6 +849,8 @@
             if(!deck.length)deck.push(...shuffleDeck([...source]));
             const card=deck.shift(); let creditorId=null;
             broadcastLog('🃏 '+(type==='chance'?'Шанс':'Общественная казна'),p.name+': '+card.text);
+            showDrawnCard(type,card,p.name);
+            clientConns.forEach(c=>c.send({type:'DRAWN_CARD',cardType:type,card,playerName:p.name}));
             switch(card.type){
                 case 'cash':p.money+=card.amount;break;
                 case 'move':creditorId=resolveCardMovement(p,card.pos,card.go!==false);break;
@@ -1132,6 +1162,20 @@
             takeProps.forEach(id=>{ownedCells[id].ownerId=p1.id;ownedCells[id].color=p1.color;});
             broadcastState();broadcastLog('🤝 Сделка',p1.name+' и '+p2.name+' успешно совершили обмен.');
         }
+        function showDrawnCard(type,card,playerName) {
+            const isChance=type==='chance';
+            const overlay=document.getElementById('drawn-card-overlay');
+            const panel=document.getElementById('drawn-card');
+            if(!overlay||!panel||!card)return;
+            panel.classList.toggle('chest',!isChance);
+            document.getElementById('drawn-card-top').textContent=isChance?'СЛУЧАЙ ИЗ ЖИЗНИ':'СООБЩЕНИЕ ОТ БАНКА';
+            document.getElementById('drawn-card-symbol').textContent=isChance?'❓':'🏦';
+            document.getElementById('drawn-card-heading').textContent=isChance?'ШАНС':'ОБЩЕСТВЕННАЯ КАЗНА';
+            document.getElementById('drawn-card-text').textContent=card.text;
+            document.getElementById('drawn-card-player').textContent='Карта игрока: '+(playerName||'участник');
+            overlay.style.display='flex';
+        }
+        function closeDrawnCard() { const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
