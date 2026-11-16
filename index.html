@@ -551,6 +551,9 @@
         let isHost = false, myId = '', activeRoomId = '';
         let players = [], ownedCells = {}, currentTurnIndex = 0, turnPhase = 'ROLL', selectedCellId = null;
         let pendingTrade = null;
+        let consecutiveDoubles = 0;
+        let lastDice = [1, 1];
+        let gameOver = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -562,22 +565,22 @@
 
         function calculateRent(cellId, diceSum = 7) {
             const cell = BOARD_CELLS[cellId];
-            if (!ownedCells[cellId]) return 0;
+            if (!ownedCells[cellId] || ownedCells[cellId].mortgaged) return 0;
             const ownerId = ownedCells[cellId].ownerId;
             const houses = ownedCells[cellId].houses || 0;
 
             if (cell.type === 'railroad') {
-                const rrCount = BOARD_CELLS.filter(c => c.type === 'railroad' && ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId).length;
+                const rrCount = BOARD_CELLS.filter(c => c.type === 'railroad' && ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId && !ownedCells[c.id].mortgaged).length;
                 return [25, 50, 100, 200][rrCount - 1] || 25;
             }
             if (cell.type === 'utility') {
-                const utilCount = BOARD_CELLS.filter(c => c.type === 'utility' && ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId).length;
+                const utilCount = BOARD_CELLS.filter(c => c.type === 'utility' && ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId && !ownedCells[c.id].mortgaged).length;
                 return diceSum * (utilCount === 2 ? 10 : 4);
             }
             if (cell.type !== 'street') return cell.rent || 20;
             
             const sameColorCells = BOARD_CELLS.filter(c => c.color === cell.color);
-            const hasMonopoly = sameColorCells.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId);
+            const hasMonopoly = sameColorCells.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId && !ownedCells[c.id].mortgaged);
             if (houses === 0) return hasMonopoly ? cell.rent * 2 : cell.rent;
             const multipliers = [1, 5, 15, 40, 50, 60]; 
             return cell.rent * multipliers[houses];
@@ -736,6 +739,18 @@
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
             const oldPos = p.pos;
+            lastDice = [d1, d2];
+            if (!p.inJail && d1 === d2) consecutiveDoubles++;
+            else if (!p.inJail) consecutiveDoubles = 0;
+            if (!p.inJail && consecutiveDoubles >= 3) {
+                consecutiveDoubles = 0;
+                turnPhase = 'ACTION';
+                sendToJail(p);
+                clientConns.forEach(c => c.send({ type:'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice:[d1,d2] }));
+                playDiceAnim(d1,d2, syncUI);
+                broadcastLog('🚔 Тюрьма', p.name + ' выбросил три дубля подряд и отправляется в тюрьму.');
+                return;
+            }
 
             if (p.inJail) {
                 if (d1 === d2) {
@@ -809,9 +824,9 @@
         function processBuy(peerId) {
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[p.pos];
-            if (p.id === peerId && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
+            if (p && p.id === peerId && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
                 p.money -= cell.price;
-                ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0 };
+                ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0, mortgaged: false };
                 broadcastState(); broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
             }
         }
@@ -821,7 +836,10 @@
             const cell = BOARD_CELLS[cellId];
             if (p.id !== peerId || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
             
-            if (p.money >= cell.housePrice && ownedCells[cellId].houses < 5) {
+            const group = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
+            const groupOwned = group.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === p.id && !ownedCells[c.id].mortgaged);
+            const minHouses = Math.min(...group.map(c => ownedCells[c.id]?.houses || 0));
+            if (cell.type === 'street' && groupOwned && !ownedCells[cellId].mortgaged && p.money >= cell.housePrice && ownedCells[cellId].houses < 5 && ownedCells[cellId].houses === minHouses) {
                 p.money -= cell.housePrice;
                 ownedCells[cellId].houses++;
                 broadcastState();
@@ -830,9 +848,16 @@
         }
 
         function processEndTurn(peerId) {
-            if (players[currentTurnIndex].id === peerId && turnPhase === 'ACTION') {
-                currentTurnIndex = (currentTurnIndex + 1) % players.length;
-                turnPhase = 'ROLL';
+            const p = players[currentTurnIndex];
+            if (p && p.id === peerId && turnPhase === 'ACTION') {
+                if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
+                    turnPhase = 'ROLL';
+                    broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
+                } else {
+                    consecutiveDoubles = 0;
+                    currentTurnIndex = (currentTurnIndex + 1) % players.length;
+                    turnPhase = 'ROLL';
+                }
                 broadcastState();
             }
         }
@@ -1048,6 +1073,8 @@
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
             const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
@@ -1055,10 +1082,11 @@
             document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
 
             let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
                 const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
                 const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                if (hasMonopoly && activePlayer.money >= inspCell.housePrice) canBuild = true;
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
             }
             document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
             if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
