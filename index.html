@@ -727,6 +727,7 @@
         let bankHouses = 32, bankHotels = 12;
         let pendingDebt = null;
         let pendingCardAckId = null;
+        let pendingDrawnCard = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -806,7 +807,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardAckId=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardAckId=null; pendingDrawnCard=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -869,12 +870,11 @@
                 auctionState = data.auctionState || null;
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
-                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardAckId = data.pendingCardAckId ?? null;
-                if(!pendingCardAckId){const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
+                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null;
+                if(pendingCardAckId && pendingDrawnCard) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+                else {const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
-            } else if (data.type === 'DRAWN_CARD') {
-                pendingCardAckId=data.playerId||pendingCardAckId; showDrawnCard(data.cardType,data.card,data.playerName);
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
         }
@@ -934,10 +934,9 @@
         function drawCard(type,p) {
             const deck=type==='chance'?chanceDeck:chestDeck,source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
             if(!deck.length)deck.push(...shuffleDeck([...source]));
-            const card=deck.shift(); let creditorId=null; pendingCardAckId=p.id;
+            const card=deck.shift(); let creditorId=null; pendingCardAckId=p.id; pendingDrawnCard={type,card,playerName:p.name,playerId:p.id};
             broadcastLog('🃏 '+(type==='chance'?'Шанс':'Общественная казна'),p.name+': '+card.text);
             showDrawnCard(type,card,p.name);
-            clientConns.forEach(c=>c.send({type:'DRAWN_CARD',cardType:type,card,playerName:p.name,playerId:p.id}));
             switch(card.type){
                 case 'cash':if(card.amount>=0)p.money+=card.amount;else startDebtResolution(p,-card.amount,null,'карточка');break;
                 case 'move':creditorId=resolveCardMovement(p,card.pos,card.go!==false);break;
@@ -998,48 +997,18 @@
                     } else {
                         turnPhase = 'ACTION';
                         clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
-                        playDiceAnim(d1, d2, () => { syncUI(); broadcastLog('🚔 Тюрьма', `${p.name} не смог выйти из тюрьмы.`); });
-                        return;
-                    }
-                }
+                        playDiceAnim(d1, d2, syncUI);
+            // Resolve the landing immediately; card draws must never depend on the dice animation callback.
+            if (cell.id !== 30) broadcastLog('🎲 Ход', `${p.name} пошел на «${cell.name}».`);
+            if (cell.id === 30) sendToJail(p);
+            else if (cell.type === 'chance') drawCard('chance', p);
+            else if (cell.type === 'chest') drawCard('chest', p);
+            else if (cell.type === 'tax') {
+                if(startDebtResolution(p,cell.price,null,'налог')){broadcastState();return;}
+                broadcastLog('💎 Налог', `${p.name} заплатил налог ${cell.price}.`);
             }
-
-            if (!p.inJail) {
-                const newPos = (p.pos + d1 + d2) % 40;
-                if (newPos < oldPos) {
-                    p.money += 200;
-                    broadcastLog('💰 Зарплата', `${p.name} проходит ВПЕРЕД и получает $200.`);
-                }
-                p.pos = newPos;
-            }
-
-            turnPhase = 'ACTION';
             selectedCellId = p.pos;
-            const cell = BOARD_CELLS[p.pos];
-
-            if (ownedCells[cell.id] && ownedCells[cell.id].ownerId !== p.id && !ownedCells[cell.id].mortgaged && !p.inJail) {
-                const rent = calculateRent(cell.id, d1 + d2);
-                if(startDebtResolution(p,rent,ownedCells[cell.id].ownerId,'рента за «'+cell.name+'»')){broadcastState();return;}
-            }
-            if(pendingDebt?.debtorId===p.id){broadcastState();return;}
-
-            clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
-            
-            playDiceAnim(d1, d2, () => { 
-                syncUI(); 
-                if (cell.id !== 30) broadcastLog('🎲 Ход', `${p.name} пошел на «${cell.name}».`);
-                
-                if (cell.id === 30) sendToJail(p);
-                else if (cell.type === 'chance') drawCard('chance', p);
-                else if (cell.type === 'chest') drawCard('chest', p);
-                else if (cell.type === 'tax') {
-                    if(startDebtResolution(p,cell.price,null,'налог')){broadcastState();return;}
-                    broadcastLog('💎 Налог', `${p.name} заплатил налог ${cell.price}.`);broadcastState();
-                }
-                // Re-render after landing effects so the purchase offer reflects the final turn state.
-                selectedCellId = p.pos;
-                broadcastState();
-            });
+            broadcastState();
         }
 
         function processPayJail(peerId) {
@@ -1259,7 +1228,7 @@
         }
         function takeDrawnCard() { if(!pendingCardAckId||pendingCardAckId!==myId)return; if(isHost)processAcknowledgeCard(myId); else if(hostConn)hostConn.send({type:'ACK_CARD'}); }
         function closeDrawnCard() { takeDrawnCard(); }
-        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId)return; pendingCardAckId=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
+        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId)return; pendingCardAckId=null; pendingDrawnCard=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
@@ -1272,7 +1241,7 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardAckId};
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardAckId,pendingDrawnCard};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
