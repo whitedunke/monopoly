@@ -68,7 +68,58 @@
         }
         .badge-btn:hover { background: rgba(255,255,255,0.1); }
 
-        /* ИГРОКИ */
+        
+        /* Рабочая область: подробное управление слева, поле в центре */
+        #game-screen{grid-template-columns:minmax(330px,380px) minmax(0,1fr) minmax(220px,260px);gap:14px;padding:12px}
+        .estate-sidebar{min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:0 5px 8px 0}
+        .estate-sidebar::-webkit-scrollbar{width:6px}.estate-sidebar::-webkit-scrollbar-thumb{background:#c9c1b4;border-radius:8px}
+        .estate-dashboard{width:100%;max-height:none;grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto;gap:10px;padding:13px;border-radius:16px;overflow:visible}
+        .estate-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#294b3b;padding:2px 2px 8px;border-bottom:1px solid #e7e0d4}
+        .estate-panel-heading strong{display:block;font-size:16px;font-weight:900}
+        .estate-panel-heading small{display:block;color:#77756d;font-size:11px;margin-top:3px}
+        .estate-panel-mark{font-size:9px;font-weight:900;letter-spacing:.7px;color:#47745b;background:#eaf2eb;border-radius:20px;padding:6px 8px}
+        .estate-wallet{min-height:0;gap:12px;padding:12px;display:grid;grid-template-columns:1fr auto;align-items:center}
+        .estate-player-token{width:44px;height:44px;font-size:23px}
+        .estate-balance{font-size:30px}
+        .estate-income{font-size:12px}
+        .estate-assets{min-height:180px}
+        .estate-property-list{grid-template-columns:repeat(2,minmax(0,1fr));max-height:340px;min-height:120px;overflow-y:auto;align-content:start}
+        .estate-property{min-height:92px}
+        .estate-manage-intro{font-size:11px;line-height:1.4;color:#77756d;margin-top:-4px}
+        .estate-stats{grid-column:auto;padding-top:8px;gap:5px}
+        .estate-stat{font-size:10px;padding:6px 8px}
+        .estate-actions{grid-column:auto;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+        .estate-actions .btn{white-space:normal;min-height:42px;line-height:1.15;font-size:11px;padding:8px 5px}
+        .estate-actions .btn.build{grid-column:1/-1;background:#16845d;color:#fff}
+        .left-player-list{display:flex;flex-direction:column;gap:8px}
+        .left-player-list .player-card{padding:10px;gap:6px}
+        .board-wrapper{min-width:0}
+        .board{height:min(calc(100vh - 92px),calc(100vw - 690px));max-height:100%;border-width:7px}
+        .board-center{padding:clamp(10px,1.2vw,20px)}
+        .brand-logo{font-size:clamp(20px,2.3vw,34px);letter-spacing:3px;margin-bottom:4px}
+        .center-main{gap:8px}
+        .dice-area{gap:14px;margin:8px 0}
+        .die-wrapper{width:52px;height:52px}
+        .board-deck{width:clamp(58px,7vw,92px);height:clamp(88px,10vw,124px)}
+        .action-buttons{gap:6px;flex-wrap:wrap;justify-content:center}
+        .action-buttons .btn{font-size:11px;padding:9px 12px}
+        .purchase-action{max-width:72%;margin:0 auto}
+        #purchase-hint{font-size:10px;line-height:1.3}
+        @media(max-width:1100px){
+          #game-screen{grid-template-columns:minmax(280px,330px) minmax(0,1fr);grid-template-rows:52px 1fr}
+          .sidebar-right{display:none}
+          .board{height:min(calc(100vh - 88px),calc(100vw - 390px))}
+        }
+        @media(max-width:760px){
+          body{height:auto;min-height:100vh;overflow:auto;align-items:flex-start}
+          #game-screen{height:auto;min-height:100vh;grid-template-columns:1fr;grid-template-rows:52px auto auto;padding:8px}
+          .estate-sidebar{max-height:none;overflow:visible;order:2}
+          .board-wrapper{order:1;min-height:0;overflow:visible}
+          .board{height:auto;width:min(100%,calc(100vw - 16px));aspect-ratio:1/1}
+          .sidebar-right{display:flex;order:3;max-height:320px}
+          .estate-property-list{max-height:260px}
+        }
+/* ИГРОКИ */
         .sidebar-left, .sidebar-right { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; padding-right: 4px; }
         .sidebar-left::-webkit-scrollbar, .sidebar-right::-webkit-scrollbar { width: 6px; }
         .sidebar-left::-webkit-scrollbar-thumb, .sidebar-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
@@ -465,7 +516,30 @@
             <button class="badge-btn" onclick="copyInviteLink()">🔗 Копировать ссылку</button>
         </header>
 
-        <div class="sidebar-left" id="left-players"></div>
+        <div class="sidebar-left estate-sidebar"><section class="estate-dashboard" id="estate-dashboard"><div class="estate-panel-heading"><div><strong>Моё имущество</strong><small>Недвижимость и управление активами</small></div><span class="estate-panel-mark">УПРАВЛЕНИЕ</span></div>
+                        <div class="estate-wallet">
+                            <div class="estate-player"><div class="estate-player-token" id="estate-token">🎩</div><div><div id="estate-player-name">Игрок</div><small style="color:#68778b">Ваш капитал</small></div></div>
+                            <div><div class="estate-balance" id="estate-balance">$0</div><div class="estate-income" id="estate-income">▲ $200 за круг</div></div>
+                        </div>
+                        <div class="estate-assets">
+                            <div class="estate-assets-title" id="estate-assets-title">Ваше имущество (0 объектов)</div><div class="estate-manage-intro">Выберите улицу, чтобы посмотреть строительство, залог и доступные действия.</div>
+                            <div class="estate-property-list" id="estate-property-list"><span style="color:#777">Пока нет недвижимости</span></div>
+                        </div>
+                        <div class="estate-stats">
+                            <span class="estate-stat" id="estate-buildings-stat">🏠 Дома и отели: 0</span>
+                            <span class="estate-stat" id="estate-mortgage-stat">🏦 Ипотека: нет</span>
+                            <span class="estate-stat" id="estate-selected-stat">Выберите объект для управления</span>
+                        </div>
+                        <div id="debt-panel" style="display:none;grid-column:1/-1;padding:12px 14px;border:1px solid #d97706;background:#fff7ed;color:#7c2d12;border-radius:10px;font-size:13px;font-weight:700;align-items:center;gap:12px;"><span id="debt-message">Необходимо погасить долг.</span></div>
+                        <div class="estate-actions">
+                            <button class="btn build" id="estate-build-btn" onclick="buildHouse()" disabled title="Выберите полный цветовой комплект, чтобы строить">🏠 Построить дом</button>
+                            <button class="btn sell" id="estate-sell-btn" onclick="sellSelectedAsset()" disabled>🏷 Продать здания</button>
+                            <button class="btn auction" id="estate-auction-btn" onclick="startAuction()">🔨 Аукцион</button>
+                            <button class="btn mortgage" id="estate-mortgage-btn" onclick="mortgageSelected()" disabled>🏦 Заложить</button>
+                            <button class="btn redeem" id="estate-redeem-btn" onclick="redeemSelected()" disabled>⌂ Выкупить</button>
+                            <button class="btn trade" id="estate-trade-btn" onclick="openTradeModal()" disabled>⇄ Обмен</button>
+                        </div>
+                    </section><div id="left-players" class="left-player-list"></div></div>
 
         <div class="board-wrapper">
             <div class="board" id="board">
@@ -512,30 +586,7 @@
                         </div>
                     </div>
 
-                    <section class="estate-dashboard" id="estate-dashboard">
-                        <div class="estate-wallet">
-                            <div class="estate-player"><div class="estate-player-token" id="estate-token">🎩</div><div><div id="estate-player-name">Игрок</div><small style="color:#68778b">Ваш капитал</small></div></div>
-                            <div><div class="estate-balance" id="estate-balance">$0</div><div class="estate-income" id="estate-income">▲ $200 за круг</div></div>
-                        </div>
-                        <div class="estate-assets">
-                            <div class="estate-assets-title" id="estate-assets-title">Ваше имущество (0 объектов)</div>
-                            <div class="estate-property-list" id="estate-property-list"><span style="color:#777">Пока нет недвижимости</span></div>
-                        </div>
-                        <div class="estate-stats">
-                            <span class="estate-stat" id="estate-buildings-stat">🏠 Дома и отели: 0</span>
-                            <span class="estate-stat" id="estate-mortgage-stat">🏦 Ипотека: нет</span>
-                            <span class="estate-stat" id="estate-selected-stat">Выберите объект для управления</span>
-                        </div>
-                        <div id="debt-panel" style="display:none;grid-column:1/-1;padding:12px 14px;border:1px solid #d97706;background:#fff7ed;color:#7c2d12;border-radius:10px;font-size:13px;font-weight:700;align-items:center;gap:12px;"><span id="debt-message">Необходимо погасить долг.</span></div>
-                        <div class="estate-actions">
-                            <button class="btn build" id="estate-build-btn" onclick="buildHouse()" disabled title="Выберите полный цветовой комплект, чтобы строить">🏠 Построить дом</button>
-                            <button class="btn sell" id="estate-sell-btn" onclick="sellSelectedAsset()" disabled>🏷 Продать здания</button>
-                            <button class="btn auction" id="estate-auction-btn" onclick="startAuction()">🔨 Аукцион</button>
-                            <button class="btn mortgage" id="estate-mortgage-btn" onclick="mortgageSelected()" disabled>🏦 Заложить</button>
-                            <button class="btn redeem" id="estate-redeem-btn" onclick="redeemSelected()" disabled>⌂ Выкупить</button>
-                            <button class="btn trade" id="estate-trade-btn" onclick="openTradeModal()" disabled>⇄ Обмен</button>
-                        </div>
-                    </section>
+                    
                 </div>
             </div>
         </div>
@@ -1440,7 +1491,7 @@
             document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
             document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&BOARD_CELLS[activePlayer.pos].price&&!ownedCells[activePlayer.pos]);
 
-            // Строительство доступно прямо из центральной панели имущества.
+            // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
             const buildGroup=BOARD_CELLS.filter(c=>c.type==='street'&&c.color===inspCell.color);
             const buildGroupComplete=buildGroup.length>0&&buildGroup.every(c=>ownedCells[c.id]?.ownerId===myId&&!ownedCells[c.id].mortgaged);
@@ -1449,6 +1500,8 @@
             const buildStockAvailable=buildCount===4?bankHotels>0:bankHouses>0;
             const canBuildSelected=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&inspCell.type==='street'&&selectedMine&&!selectedProp.mortgaged&&buildGroupComplete&&buildCount<5&&buildCount===buildMin&&activePlayer.money>=inspCell.housePrice&&buildStockAvailable;
             let buildReason='Стройка доступна в вашу фазу действия после полного выкупа цветовой группы';
+            if(!isMyTurn)buildReason='Строить можно только во время вашего хода';
+            else if(turnPhase!=='ACTION'&&turnPhase!=='ROLL')buildReason='Сначала завершите текущее действие';
             if(!selectedMine||inspCell.type!=='street')buildReason='Выберите принадлежащую вам улицу';
             else if(!buildGroupComplete)buildReason='Сначала выкупите все улицы этой цветовой группы и снимите залог';
             else if(buildCount>=5)buildReason='На этой улице уже построен отель';
@@ -1457,6 +1510,7 @@
             else if(activePlayer.money<inspCell.housePrice)buildReason='Недостаточно денег: дом стоит $'+inspCell.housePrice;
             else if(pendingDebt||pendingCardAckId||auctionState)buildReason='Завершите текущее действие перед строительством';
             buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
             buildButton.textContent=buildCount===4?'🏨 Построить отель ($'+inspCell.housePrice+')':'🏠 Построить дом ($'+inspCell.housePrice+')';
             buildButton.title=canBuildSelected?'Построить на выбранной улице':buildReason;
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
