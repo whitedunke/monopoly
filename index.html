@@ -2186,7 +2186,15 @@
                     const current=ownedCells[c.id]?.houses||0;
                     return allOwned&&current===min&&current<5&&activePlayer.money>=c.housePrice&&(current===4?bankHotels>0:bankHouses>0);
                 });
-                buildReason='Дом на «'+inspCell.name+'» стоит 
+                buildReason='Дом на «'+inspCell.name+'» стоит $'+inspCell.housePrice+'. У вас $'+activePlayer.money+', не хватает $'+shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за $'+alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за $'+inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель ($'+inspCell.housePrice+')':'🏠 Построить дом ($'+inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
