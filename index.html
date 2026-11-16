@@ -239,8 +239,8 @@
         .prop-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #e2e8f0; cursor: pointer; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; transition: 0.2s; }
         .prop-list label:hover { background: rgba(255,255,255,0.1); }
         .prop-list input { cursor: pointer; accent-color: #8b5cf6; width: 16px; height: 16px; }
-
-        /* Classic tabletop visual refresh */
+    
+        /* Classic, readable tabletop theme */
         :root { --bg-dark:#eeeae1; --panel-bg:#fffdf8; --panel-border:#e2dbce; --board-bg:#e8e3d8; --board-center:#f8f5ed; --text-dark:#292820; --accent-gold:#b58a42; --accent-green:#47745b; }
         body { background:#eeeae1; color:#292820; }
         #lobby { background:#fffdf8; color:#292820; border:1px solid #e2dbce; box-shadow:0 18px 50px rgba(55,45,28,.10); backdrop-filter:none; }
@@ -251,11 +251,9 @@
         .btn { background:#426b50; color:#fff; border-radius:9px; box-shadow:none; }
         .btn:hover:not(:disabled) { background:#35583f; transform:translateY(-1px); box-shadow:none; }
         .btn-secondary { background:#e9e5dc; color:#353329; box-shadow:none; }
-        .btn-secondary:hover:not(:disabled) { background:#ddd7ca; box-shadow:none; }
         header,.player-card,.chat-panel { background:#fffdf8; border:1px solid #e2dbce; color:#292820; box-shadow:0 4px 18px rgba(55,45,28,.05); backdrop-filter:none; }
         header { border-radius:12px; }
         .badge-btn { background:#f4f1e9; color:#4b493f; border:1px solid #e3dccf; }
-        .badge-btn:hover { background:#ebe6db; }
         .player-card { border-radius:12px; }
         .player-card.active { border:2px solid #64866a; box-shadow:0 0 0 3px rgba(71,116,91,.10); animation:none; }
         .player-card.jailed { border-color:#c77768; background:#fff8f5; }
@@ -263,7 +261,6 @@
         .player-money { color:#315f43; text-shadow:none; }
         .board { background:#e5e0d5; border:7px solid #315640; border-radius:5px; box-shadow:0 14px 34px rgba(55,45,28,.16); }
         .cell { background:#fffdf8; border-color:#d9d3c8; }
-        .cell:hover { box-shadow:0 5px 12px rgba(30,25,15,.16); border-color:#7c8d78; }
         .cell.owned { filter:none; background:#f4f1e8; }
         .cell-name { color:#292820; }
         .cell-price { color:#686357; }
@@ -271,27 +268,12 @@
         .board-center { background:#f7f4eb; background-image:radial-gradient(circle at center,#fffdf8 0%,#f2eee4 100%); }
         .brand-logo { color:#315640; text-shadow:none; }
         .property-preview { background:#fffdf8; border:1px solid #ded7ca; box-shadow:0 5px 15px rgba(40,32,18,.07); border-radius:10px; }
-        .property-preview-meta { color:#696456; }
-        .chat-panel { border-radius:12px; }
         .chat-messages { background:#f6f3ec; color:#343228; border:1px solid #e6dfd2; }
-        .chat-messages b { color:#53715b !important; }
-        .chat-messages span { color:#403e35 !important; }
-        .chat-input-row button { background:#426b50; }
-        .chat-input-row button:hover { background:#35583f; }
         .modal-overlay { background:rgba(35,32,25,.48); }
         .modal-content { background:#fffdf8; color:#292820; border:1px solid #e2dacd; box-shadow:0 18px 50px rgba(30,25,15,.18); }
         .trade-col { background:#f7f4ed; border:1px solid #e7e0d4; }
-        .trade-col h4 { color:#53715b; }
-        .prop-list label { color:#403e35; background:#eeeadf; }
-        .prop-list label:hover { background:#e5dfd2; }
-        .economy-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
-        .economy-actions button { border:0; border-radius:7px; padding:7px 9px; cursor:pointer; font-size:11px; font-weight:700; background:#e8eee7; color:#315640; }
-        .economy-actions button:disabled { opacity:.4; cursor:not-allowed; }
-        #auction-modal .modal-content { max-width:440px; }
-        .auction-bid-row { display:flex; gap:8px; align-items:center; margin:14px 0; }
-        .auction-bid-row input { min-width:0; flex:1; padding:11px; border:1px solid #ddd6c9; border-radius:8px; background:#f7f4ed; color:#292820; }
         @media(max-width:1050px) { #game-screen { grid-template-columns:180px minmax(360px,1fr); grid-template-rows:54px minmax(0,1fr) auto; } .sidebar-right { grid-column:1/-1; flex-direction:row; height:190px; } .sidebar-right #right-players { flex:1; flex-direction:row!important; flex-wrap:wrap; align-content:flex-start; } .sidebar-right .player-card { min-width:145px; flex:1; } .chat-panel { min-width:240px; } .board { height:min(calc(100vh - 290px),calc(100vw - 220px)); } }
-        @media(max-width:680px) { body { height:auto; min-height:100vh; overflow:auto; align-items:flex-start; } #game-screen { height:auto; min-height:100vh; grid-template-columns:1fr; grid-template-rows:auto auto auto auto; padding:8px; } header { min-height:52px; padding:0 12px; } .sidebar-left,.sidebar-right { height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; } .player-card { min-width:145px; flex:1; } .board-wrapper { overflow:visible; } .board { width:min(96vw,620px); height:auto; aspect-ratio:1; } .board-center { padding:8px; } .property-preview { width:min(100%,260px); padding:8px; } .dice-area { gap:14px; margin:8px 0; } .die-wrapper { width:44px; height:44px; } .die { border-radius:9px; padding:7px; } .pip { width:8px; height:8px; } .action-buttons .btn { padding:9px 11px; font-size:12px; } .sidebar-right { grid-column:auto; } .chat-panel { min-height:190px; width:100%; } .trade-cols { flex-direction:column; } }
+        @media(max-width:680px) { body { height:auto; min-height:100vh; overflow:auto; align-items:flex-start; } #game-screen { height:auto; min-height:100vh; grid-template-columns:1fr; grid-template-rows:auto auto auto auto; padding:8px; } header { min-height:52px; padding:0 12px; } .sidebar-left,.sidebar-right { height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; } .player-card { min-width:145px; flex:1; } .board-wrapper { overflow:visible; } .board { width:min(96vw,620px); height:auto; aspect-ratio:1; } .chat-panel { min-height:190px; width:100%; } .trade-cols { flex-direction:column; } }
 
     </style>
 </head>
@@ -344,7 +326,6 @@
                             <button class="btn" id="roll-btn" onclick="rollDice()">Бросить кубики 🎲</button>
                             <button class="btn" id="pay-jail-btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); display: none;" onclick="payJail()">Заплатить $50 💸</button>
                             <button class="btn" id="buy-btn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: none;" onclick="buyCurrentCell()">Купить</button>
-                            <button class="btn" id="auction-btn" style="background:#b58a42; display:none;" onclick="startAuctionForCurrentCell()">Передать на аукцион</button>
                             <button class="btn" id="build-btn" style="background: linear-gradient(135deg, #10b981, #047857); display: none;" onclick="buildHouse()">Построить 🏠</button>
                             <button class="btn" id="trade-btn" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: none;" onclick="openTradeModal()">Обмен 🤝</button>
                             <button class="btn" id="end-turn-btn" style="background: linear-gradient(135deg, #64748b, #475569); display: none;" onclick="endTurn()">Завершить ход ⏭️</button>
@@ -355,7 +336,7 @@
                         <div class="property-preview" id="cell-inspector">
                             <div class="property-preview-header" id="insp-color" style="background: #cbd5e1;"></div>
                             <div class="property-preview-title" id="insp-title">Добро пожаловать!</div>
-                            <div class="property-preview-meta" id="insp-meta">Нажмите на клетку для информации</div><div class="economy-actions" id="estate-actions"></div>
+                            <div class="property-preview-meta" id="insp-meta">Нажмите на клетку для информации</div>
                         </div>
                     </div>
                 </div>
@@ -411,23 +392,6 @@
             <div style="display:flex; gap:12px;">
                 <button class="btn" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="acceptTrade()">Принять сделку</button>
                 <button class="btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);" onclick="rejectTrade()">Отклонить</button>
-            </div>
-        </div>
-    </div>
-
-
-    <div class="modal-overlay" id="auction-modal">
-        <div class="modal-content">
-            <div class="modal-title">Аукцион недвижимости</div>
-            <div id="auction-property" style="text-align:center;color:#696456;"></div>
-            <div id="auction-status" style="text-align:center;margin:12px 0;font-weight:700;"></div>
-            <div class="auction-bid-row">
-                <input type="number" id="auction-bid-input" min="1" step="1" placeholder="Ваша ставка">
-                <button class="btn" style="width:auto;" onclick="submitAuctionBid()">Сделать ставку</button>
-            </div>
-            <div style="display:flex;gap:8px;">
-                <button class="btn btn-secondary" onclick="passAuction()">Пас</button>
-                <button class="btn btn-secondary" onclick="closeAuctionView()">Закрыть</button>
             </div>
         </div>
     </div>
@@ -513,8 +477,6 @@
         let isHost = false, myId = '', activeRoomId = '';
         let players = [], ownedCells = {}, currentTurnIndex = 0, turnPhase = 'ROLL', selectedCellId = null;
         let pendingTrade = null;
-        let auction = null;
-        let lastRollWasDouble = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -631,10 +593,6 @@
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
             else if (data.type === 'BUY') { processBuy(conn.peer); }
             else if (data.type === 'BUILD') { processBuild(conn.peer, data.cellId); }
-            else if (data.type === 'AUCTION_START') { const p=players[currentTurnIndex],cell=BOARD_CELLS[p?.pos]; if(p?.id===conn.peer && turnPhase==='ACTION' && cell?.price && !ownedCells[cell.id] && !auction){ auction={cellId:cell.id,currentBid:0,bidderId:null,order:players.map((_,i)=>(currentTurnIndex+i)%players.length),index:0,passed:[],active:true}; broadcastLog('🔨 Аукцион','Начинается аукцион: '+cell.name+'.'); broadcastState(); } }
-            else if (data.type === 'AUCTION_BID') { processAuctionBid(conn.peer,data.amount); }
-            else if (data.type === 'AUCTION_PASS') { processAuctionPass(conn.peer); }
-            else if (data.type === 'ESTATE_ACTION') { processEstateAction(conn.peer,data.cellId,data.action); }
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
@@ -648,7 +606,7 @@
         function handleClientData(data) {
             if (data.type === 'STATE') {
                 players = data.players; ownedCells = data.ownedCells;
-                currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase; lastRollWasDouble = !!data.lastRollWasDouble; auction = data.auction || null;
+                currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase;
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
@@ -738,16 +696,13 @@
             const cell = BOARD_CELLS[p.pos];
 
             if (ownedCells[cell.id] && ownedCells[cell.id].ownerId !== p.id && !p.inJail) {
-                const rent = ownedCells[cell.id].mortgaged ? 0 : calculateRent(cell.id, d1 + d2);
+                const rent = calculateRent(cell.id, d1 + d2);
                 p.money -= rent;
-                const landlord = players.find(pl => pl.id === ownedCells[cell.id].ownerId);
-                if (landlord) landlord.money += rent;
+                players.find(pl => pl.id === ownedCells[cell.id].ownerId).money += rent;
                 broadcastLog('💸 Рента', `${p.name} заплатил $${rent} за «${cell.name}».`);
             }
 
             if (p.money < 0) { handleBankruptcy(p, ownedCells[cell.id]?.ownerId); return; }
-            lastRollWasDouble = d1 === d2 && !p.inJail;
-            if (lastRollWasDouble) broadcastLog('🎲 Дубль', `${p.name} получает дополнительный бросок после завершения действий.`);
 
             clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
             
@@ -769,7 +724,7 @@
 
         function processPayJail(peerId) {
             const p = players[currentTurnIndex];
-            if (p && p.id === peerId && turnPhase === 'ROLL' && p.inJail && p.money >= 50) {
+            if (p.id === peerId && p.inJail && p.money >= 50) {
                 p.money -= 50;
                 p.inJail = false;
                 broadcastLog('💸 Тюрьма', `${p.name} заплатил $50 и выходит из тюрьмы.`);
@@ -780,7 +735,7 @@
         function processBuy(peerId) {
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[p.pos];
-            if (p.id === peerId && turnPhase === 'ACTION' && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
+            if (p.id === peerId && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
                 p.money -= cell.price;
                 ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0 };
                 broadcastState(); broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
@@ -790,12 +745,9 @@
         function processBuild(peerId, cellId) {
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[cellId];
-            if (p.id !== peerId || turnPhase !== 'ACTION' || !cell || cell.type !== 'street' || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
-            const group = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
-            const counts = group.map(c => ownedCells[c.id]?.houses || 0);
-            const hasFullSet = group.every(c => ownedCells[c.id]?.ownerId === p.id);
-            const evenBuild = counts.length && ownedCells[cellId].houses === Math.min(...counts) && Math.max(...counts) - Math.min(...counts) <= 1;
-            if (hasFullSet && evenBuild && p.money >= cell.housePrice && ownedCells[cellId].houses < 5) {
+            if (p.id !== peerId || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
+            
+            if (p.money >= cell.housePrice && ownedCells[cellId].houses < 5) {
                 p.money -= cell.housePrice;
                 ownedCells[cellId].houses++;
                 broadcastState();
@@ -804,16 +756,11 @@
         }
 
         function processEndTurn(peerId) {
-            if (players[currentTurnIndex]?.id !== peerId || turnPhase !== 'ACTION' || auction) return;
-            if (lastRollWasDouble) {
-                lastRollWasDouble = false;
-                turnPhase = 'ROLL';
-                broadcastLog('🎲 Дополнительный ход', players[currentTurnIndex].name + ' бросает кубики ещё раз.');
-            } else {
+            if (players[currentTurnIndex].id === peerId && turnPhase === 'ACTION') {
                 currentTurnIndex = (currentTurnIndex + 1) % players.length;
                 turnPhase = 'ROLL';
+                broadcastState();
             }
-            broadcastState();
         }
 
         // --- ТОРГОВЛЯ ---
@@ -918,815 +865,6 @@
             broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
         }
 
-
-        function startAuctionForCurrentCell() {
-            const player = players[currentTurnIndex];
-            const cell = BOARD_CELLS[player?.pos];
-            if (!isHost) { hostConn?.send({type:'AUCTION_START'}); return; }
-            if (!player || player.id !== myId || turnPhase !== 'ACTION' || !cell?.price || ownedCells[cell.id] || auction) return;
-            auction = { cellId:cell.id, currentBid:0, bidderId:null, order:players.map((_,i)=>(currentTurnIndex+i)%players.length), index:0, passed:[], active:true };
-            broadcastLog('🔨 Аукцион', 'Начинается аукцион: ' + cell.name + '. Начальная ставка — $1.');
-            broadcastState(); renderAuction();
-        }
-        function renderAuction() {
-            if (!auction?.active) { document.getElementById('auction-modal').style.display='none'; return; }
-            const cell=BOARD_CELLS[auction.cellId], bidder=players.find(p=>p.id===auction.order[auction.index]);
-            document.getElementById('auction-modal').style.display='flex';
-            document.getElementById('auction-property').textContent=cell.name+' · Цена по карточке  document.getElementById(id).style.display = 'none'; }
-
-        // --- ИНТЕРФЕЙС ---
-        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
-        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
-        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
-        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
-
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
-        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
-        }
-        function sendChat() {
-            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
-            const name = document.getElementById('username').value || 'Игрок';
-            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
-        }
-
-        function renderDieFace(element, faceValue) {
-            element.className = `die face-${faceValue}`;
-            element.innerHTML = '';
-            for (let i = 0; i < faceValue; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'pip';
-                element.appendChild(pip);
-            }
-        }
-
-        function playDiceAnim(d1, d2, cb) {
-            const rollBtn = document.getElementById('roll-btn');
-            const die1 = document.getElementById('die-1');
-            const die2 = document.getElementById('die-2');
-            const wrap1 = document.getElementById('die-wrap-1');
-            const wrap2 = document.getElementById('die-wrap-2');
-
-            rollBtn.disabled = true;
-            die1.classList.add('rolling'); die2.classList.add('rolling');
-            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
-
-            let rollInterval = setInterval(() => {
-                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
-                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
-
-            setTimeout(() => {
-                clearInterval(rollInterval);
-                die1.classList.remove('rolling'); die2.classList.remove('rolling');
-                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
-
-                renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
-                if(cb) cb();
-            }, 800); 
-        }
-
-        function syncUI() {
-            renderBoard();
-            const activePlayer = players[currentTurnIndex];
-            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
-
-            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
-            players.forEach((p, i) => {
-                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
-                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
-                
-                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
-
-                const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
-                        ${jailHTML}
-                        <div class="player-identity">
-                            <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
-                        </div>
-                        <div class="player-money">$${p.money}</div>
-                        <div class="player-props-container">${propsHTML}</div>
-                    </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
-                
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
-            });
-
-            const inspCell = BOARD_CELLS[selectedCellId || 0];
-            const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
-            
-            let metaText = '';
-            if (inspCell.price) {
-                metaText = `Цена: ${inspCell.price} | Рента: ${calculateRent(inspCell.id)}${inspOwner?.mortgaged ? ' | В ИПОТЕКЕ' : ''}`;
-                if (inspOwner) {
-                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
-                    metaText += ` | Владелец: ${ownerName}`;
-                }
-            } else {
-                metaText = inspCell.sub || '';
-            }
-            document.getElementById('insp-meta').innerText = metaText;
-
-            const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
-            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
-            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
-            
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price && !auction;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+cell.price;
-            document.getElementById('auction-status').textContent=auction.bidderId ? 'Лидер: '+(players.find(p=>p.id===auction.bidderId)?.name||'Игрок')+' · ставка  document.getElementById(id).style.display = 'none'; }
-
-        // --- ИНТЕРФЕЙС ---
-        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
-        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
-        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
-        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
-
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
-        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
-        }
-        function sendChat() {
-            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
-            const name = document.getElementById('username').value || 'Игрок';
-            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
-        }
-
-        function renderDieFace(element, faceValue) {
-            element.className = `die face-${faceValue}`;
-            element.innerHTML = '';
-            for (let i = 0; i < faceValue; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'pip';
-                element.appendChild(pip);
-            }
-        }
-
-        function playDiceAnim(d1, d2, cb) {
-            const rollBtn = document.getElementById('roll-btn');
-            const die1 = document.getElementById('die-1');
-            const die2 = document.getElementById('die-2');
-            const wrap1 = document.getElementById('die-wrap-1');
-            const wrap2 = document.getElementById('die-wrap-2');
-
-            rollBtn.disabled = true;
-            die1.classList.add('rolling'); die2.classList.add('rolling');
-            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
-
-            let rollInterval = setInterval(() => {
-                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
-                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
-
-            setTimeout(() => {
-                clearInterval(rollInterval);
-                die1.classList.remove('rolling'); die2.classList.remove('rolling');
-                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
-
-                renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
-                if(cb) cb();
-            }, 800); 
-        }
-
-        function syncUI() {
-            renderBoard();
-            const activePlayer = players[currentTurnIndex];
-            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
-
-            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
-            players.forEach((p, i) => {
-                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
-                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
-                
-                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
-
-                const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
-                        ${jailHTML}
-                        <div class="player-identity">
-                            <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
-                        </div>
-                        <div class="player-money">$${p.money}</div>
-                        <div class="player-props-container">${propsHTML}</div>
-                    </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
-                
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
-            });
-
-            const inspCell = BOARD_CELLS[selectedCellId || 0];
-            const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
-            
-            let metaText = '';
-            if (inspCell.price) {
-                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
-                if (inspOwner) {
-                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
-                    metaText += ` | Владелец: ${ownerName}`;
-                }
-            } else {
-                metaText = inspCell.sub || '';
-            }
-            document.getElementById('insp-meta').innerText = metaText;
-
-            const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
-            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
-            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
-            
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+auction.currentBid+' · ход: '+(bidder?.name||'') : 'Текущая ставка: нет · ход: '+(bidder?.name||'');
-            const mine=bidder?.id===myId;
-            document.getElementById('auction-bid-input').disabled=!mine;
-            document.querySelector('#auction-modal .auction-bid-row button').disabled=!mine;
-            document.querySelector('#auction-modal .modal-content .btn-secondary').disabled=!mine;
-        }
-        function submitAuctionBid() {
-            const amount=Number(document.getElementById('auction-bid-input').value);
-            if(isHost) processAuctionBid(myId,amount); else hostConn?.send({type:'AUCTION_BID',amount});
-        }
-        function passAuction() { if(isHost) processAuctionPass(myId); else hostConn?.send({type:'AUCTION_PASS'}); }
-        function closeAuctionView() { if(!auction?.active) document.getElementById('auction-modal').style.display='none'; }
-        function processAuctionBid(peerId,amount) {
-            if(!auction?.active) return;
-            const bidderId=auction.order[auction.index], bidder=players.find(p=>p.id===bidderId);
-            if(peerId!==bidderId || !bidder || !Number.isInteger(amount) || amount<=auction.currentBid || amount>bidder.money) return;
-            auction.currentBid=amount; auction.bidderId=peerId; advanceAuction();
-        }
-        function processAuctionPass(peerId) {
-            if(!auction?.active || auction.order[auction.index]!==peerId) return;
-            auction.passed.push(peerId); advanceAuction();
-        }
-        function advanceAuction() {
-            const eligible=auction.order.filter(id=>!auction.passed.includes(id) && players.some(p=>p.id===id));
-            if(eligible.length<=1 && (eligible.length===0 || auction.bidderId)) {
-                const cell=BOARD_CELLS[auction.cellId], winner=players.find(p=>p.id===auction.bidderId);
-                if(winner) { winner.money-=auction.currentBid; ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:false}; broadcastLog('🔨 Аукцион завершён', winner.name+' приобретает '+cell.name+' за  document.getElementById(id).style.display = 'none'; }
-
-        // --- ИНТЕРФЕЙС ---
-        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
-        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
-        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
-        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
-
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
-        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
-        }
-        function sendChat() {
-            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
-            const name = document.getElementById('username').value || 'Игрок';
-            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
-        }
-
-        function renderDieFace(element, faceValue) {
-            element.className = `die face-${faceValue}`;
-            element.innerHTML = '';
-            for (let i = 0; i < faceValue; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'pip';
-                element.appendChild(pip);
-            }
-        }
-
-        function playDiceAnim(d1, d2, cb) {
-            const rollBtn = document.getElementById('roll-btn');
-            const die1 = document.getElementById('die-1');
-            const die2 = document.getElementById('die-2');
-            const wrap1 = document.getElementById('die-wrap-1');
-            const wrap2 = document.getElementById('die-wrap-2');
-
-            rollBtn.disabled = true;
-            die1.classList.add('rolling'); die2.classList.add('rolling');
-            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
-
-            let rollInterval = setInterval(() => {
-                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
-                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
-
-            setTimeout(() => {
-                clearInterval(rollInterval);
-                die1.classList.remove('rolling'); die2.classList.remove('rolling');
-                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
-
-                renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
-                if(cb) cb();
-            }, 800); 
-        }
-
-        function syncUI() {
-            renderBoard();
-            const activePlayer = players[currentTurnIndex];
-            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
-
-            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
-            players.forEach((p, i) => {
-                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
-                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
-                
-                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
-
-                const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
-                        ${jailHTML}
-                        <div class="player-identity">
-                            <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
-                        </div>
-                        <div class="player-money">$${p.money}</div>
-                        <div class="player-props-container">${propsHTML}</div>
-                    </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
-                
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
-            });
-
-            const inspCell = BOARD_CELLS[selectedCellId || 0];
-            const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
-            
-            let metaText = '';
-            if (inspCell.price) {
-                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
-                if (inspOwner) {
-                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
-                    metaText += ` | Владелец: ${ownerName}`;
-                }
-            } else {
-                metaText = inspCell.sub || '';
-            }
-            document.getElementById('insp-meta').innerText = metaText;
-
-            const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
-            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
-            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
-            
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+auction.currentBid+'.'); }
-                else broadcastLog('🔨 Аукцион завершён','Ставок не было. Недвижимость остаётся у банка.');
-                auction=null; broadcastState(); return;
-            }
-            if(eligible.length===0) { auction=null; broadcastState(); return; }
-            const current=auction.order[auction.index];
-            let next=auction.index;
-            do { next=(next+1)%auction.order.length; } while(auction.passed.includes(auction.order[next]) || !players.some(p=>p.id===auction.order[next]));
-            auction.index=next; broadcastState(); renderAuction();
-        }
-        function requestEstateAction(cellId,action) {
-            if(isHost) processEstateAction(myId,cellId,action);
-            else hostConn?.send({type:'ESTATE_ACTION',cellId,action});
-        }
-        function processEstateAction(peerId,cellId,action) {
-            const p=players[currentTurnIndex], cell=BOARD_CELLS[cellId], estate=ownedCells[cellId];
-            if(!p || p.id!==peerId || turnPhase!=='ACTION' || !cell || !estate || estate.ownerId!==p.id || (estate.houses||0)>0) return;
-            if(action==='mortgage' && !estate.mortgaged) { estate.mortgaged=true; p.money+=Math.floor(cell.price/2); broadcastLog('🏦 Ипотека',p.name+' заложил '+cell.name+' за  document.getElementById(id).style.display = 'none'; }
-
-        // --- ИНТЕРФЕЙС ---
-        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
-        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
-        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
-        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
-
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
-        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
-        }
-        function sendChat() {
-            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
-            const name = document.getElementById('username').value || 'Игрок';
-            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
-        }
-
-        function renderDieFace(element, faceValue) {
-            element.className = `die face-${faceValue}`;
-            element.innerHTML = '';
-            for (let i = 0; i < faceValue; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'pip';
-                element.appendChild(pip);
-            }
-        }
-
-        function playDiceAnim(d1, d2, cb) {
-            const rollBtn = document.getElementById('roll-btn');
-            const die1 = document.getElementById('die-1');
-            const die2 = document.getElementById('die-2');
-            const wrap1 = document.getElementById('die-wrap-1');
-            const wrap2 = document.getElementById('die-wrap-2');
-
-            rollBtn.disabled = true;
-            die1.classList.add('rolling'); die2.classList.add('rolling');
-            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
-
-            let rollInterval = setInterval(() => {
-                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
-                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
-
-            setTimeout(() => {
-                clearInterval(rollInterval);
-                die1.classList.remove('rolling'); die2.classList.remove('rolling');
-                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
-
-                renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
-                if(cb) cb();
-            }, 800); 
-        }
-
-        function syncUI() {
-            renderBoard();
-            const activePlayer = players[currentTurnIndex];
-            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
-
-            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
-            players.forEach((p, i) => {
-                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
-                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
-                
-                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
-
-                const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
-                        ${jailHTML}
-                        <div class="player-identity">
-                            <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
-                        </div>
-                        <div class="player-money">$${p.money}</div>
-                        <div class="player-props-container">${propsHTML}</div>
-                    </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
-                
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
-            });
-
-            const inspCell = BOARD_CELLS[selectedCellId || 0];
-            const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
-            
-            let metaText = '';
-            if (inspCell.price) {
-                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
-                if (inspOwner) {
-                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
-                    metaText += ` | Владелец: ${ownerName}`;
-                }
-            } else {
-                metaText = inspCell.sub || '';
-            }
-            document.getElementById('insp-meta').innerText = metaText;
-
-            const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
-            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
-            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
-            
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+Math.floor(cell.price/2)+'.'); }
-            else if(action==='redeem' && estate.mortgaged) { const cost=Math.ceil(cell.price/2*1.1); if(p.money<cost) return; p.money-=cost; estate.mortgaged=false; broadcastLog('🏦 Ипотека',p.name+' выкупил '+cell.name+' за  document.getElementById(id).style.display = 'none'; }
-
-        // --- ИНТЕРФЕЙС ---
-        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
-        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
-        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
-        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
-
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
-        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
-        }
-        function sendChat() {
-            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
-            const name = document.getElementById('username').value || 'Игрок';
-            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
-        }
-
-        function renderDieFace(element, faceValue) {
-            element.className = `die face-${faceValue}`;
-            element.innerHTML = '';
-            for (let i = 0; i < faceValue; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'pip';
-                element.appendChild(pip);
-            }
-        }
-
-        function playDiceAnim(d1, d2, cb) {
-            const rollBtn = document.getElementById('roll-btn');
-            const die1 = document.getElementById('die-1');
-            const die2 = document.getElementById('die-2');
-            const wrap1 = document.getElementById('die-wrap-1');
-            const wrap2 = document.getElementById('die-wrap-2');
-
-            rollBtn.disabled = true;
-            die1.classList.add('rolling'); die2.classList.add('rolling');
-            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
-
-            let rollInterval = setInterval(() => {
-                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
-                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
-
-            setTimeout(() => {
-                clearInterval(rollInterval);
-                die1.classList.remove('rolling'); die2.classList.remove('rolling');
-                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
-
-                renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
-                if(cb) cb();
-            }, 800); 
-        }
-
-        function syncUI() {
-            renderBoard();
-            const activePlayer = players[currentTurnIndex];
-            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
-
-            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
-            players.forEach((p, i) => {
-                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
-                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
-                
-                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
-
-                const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
-                        ${jailHTML}
-                        <div class="player-identity">
-                            <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
-                        </div>
-                        <div class="player-money">$${p.money}</div>
-                        <div class="player-props-container">${propsHTML}</div>
-                    </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
-                
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
-            });
-
-            const inspCell = BOARD_CELLS[selectedCellId || 0];
-            const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
-            
-            let metaText = '';
-            if (inspCell.price) {
-                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
-                if (inspOwner) {
-                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
-                    metaText += ` | Владелец: ${ownerName}`;
-                }
-            } else {
-                metaText = inspCell.sub || '';
-            }
-            document.getElementById('insp-meta').innerText = metaText;
-
-            const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
-            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
-            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
-            
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+cost+'.'); }
-            else return;
-            broadcastState();
-        }
-
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
@@ -1736,7 +874,7 @@
         function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble, auction })); }
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
         function appendLog(n, t) { 
             const b = document.getElementById('chat-messages'); 
@@ -1832,43 +970,22 @@
             document.getElementById('insp-meta').innerText = metaText;
 
             const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail && !auction) ? 'inline-block' : 'none';
-            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && !auction) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
             const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
             const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            document.getElementById('buy-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
-            document.getElementById('auction-btn').style.display = (canBuy && !auction) ? 'inline-block' : 'none';
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
 
             let canBuild = false;
             if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
                 const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
                 const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const levels = sameColor.map(c => ownedCells[c.id]?.houses || 0);
-                const evenBuild = levels.length && inspOwner.houses === Math.min(...levels) && Math.max(...levels) - Math.min(...levels) <= 1;
-                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
+                if (hasMonopoly && activePlayer.money >= inspCell.housePrice) canBuild = true;
             }
-            document.getElementById('build-btn').style.display = canBuild && !auction ? 'inline-block' : 'none';
-            const estateActions = document.getElementById('estate-actions');
-            estateActions.innerHTML = '';
-            if (isMyTurn && turnPhase === 'ACTION' && inspOwner?.ownerId === myId && !auction && inspCell.price && (inspOwner.houses || 0) === 0) {
-                const mortgageBtn = document.createElement('button');
-                mortgageBtn.textContent = inspOwner.mortgaged ? 'Выкупить ипотеку' : 'Заложить за 
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
- + Math.floor(inspCell.price / 2);
-                mortgageBtn.onclick = () => requestEstateAction(inspCell.id, inspOwner.mortgaged ? 'redeem' : 'mortgage');
-                estateActions.appendChild(mortgageBtn);
-            }
-            if (auction) renderAuction();
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
             if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
         }
 
