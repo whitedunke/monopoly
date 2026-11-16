@@ -280,7 +280,7 @@
     own([3],'p2');
     chestDeck=[{text:'День рождения',type:'birthday'}];
     drawCard('chest',players[0]);
-    return !players.some(x=>x.id==='p2') && !ownedCells[3];
+    return !players.some(x=>x.id==='p2') && ownedCells[3]?.ownerId==='p1';
   });
 
   knownGap('При банкротстве перед банком имущество удаляется без аукциона', () => {
