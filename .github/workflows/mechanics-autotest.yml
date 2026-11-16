@@ -1,0 +1,40 @@
+name: Monopoly mechanics autotest
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/**'
+      - '.github/workflows/mechanics-autotest.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/**'
+      - '.github/workflows/mechanics-autotest.yml'
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail when known rule gaps are detected'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+jobs:
+  mechanics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: npm install --no-save playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run game mechanics tests
+        env:
+          STRICT_MECHANICS: ${{ github.event.inputs.strict == 'true' && '1' || '0' }}
+        run: node tests/run-mechanics.cjs
