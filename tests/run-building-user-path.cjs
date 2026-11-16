@@ -157,7 +157,7 @@ async function runCase(browser, name, viewport, seed, action) {
         const afterAttempt=await page.evaluate(()=>window.__MONOPOLY_UI_TEST__.snapshot());
         check(afterAttempt.money===500-taxCase.tax,'tax path: a direct buy/auction request changed money');
         check(!afterAttempt.properties[String(taxCase.expectedPos)],'tax path: a direct request acquired the tax cell');
-        check(!auctionState,'tax path: a direct request opened an auction for tax cell');
+        check(!afterAttempt.auctionActive,'tax path: a direct request opened an auction for tax cell');
         check(pageErrors.length===0,'tax path: browser errors: '+pageErrors.join(' | '));
         passed.push(taxCase.name+' — платёж без покупки и аукциона');
       } catch(error) {
