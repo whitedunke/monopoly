@@ -736,6 +736,7 @@
                 broadcastState(); broadcastLog('Система', `${data.name} в игре.`);
             } else if (data.type === 'ROLL') { processRoll(conn.peer); }
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
+            else if (data.type === 'USE_JAIL_CARD') { processUseJailCard(conn.peer); }
             else if (data.type === 'BUY') { processBuy(conn.peer); }
             else if (data.type === 'BUILD') { processBuild(conn.peer, data.cellId); }
             else if (data.type === 'AUCTION_START') processAuctionStart(conn.peer);
@@ -759,6 +760,10 @@
                 players = data.players; ownedCells = data.ownedCells;
                 currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase;
                 auctionState = data.auctionState || null;
+                gameOver = !!data.gameOver; winnerId = data.winnerId || null;
+                chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
+                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels;
+                lastDice = data.dice || lastDice;
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
@@ -836,7 +841,7 @@
 
         function processRoll(peerId) {
             const p = players[currentTurnIndex];
-            if (!p || p.id !== peerId || turnPhase !== 'ROLL') return;
+            if (gameOver || !p || p.id !== peerId || turnPhase !== 'ROLL') return;
 
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
@@ -856,7 +861,7 @@
 
             if (p.inJail) {
                 if (d1 === d2) {
-                    p.inJail = false;
+                    p.inJail = false; p.jailTurns = 0;
                     broadcastLog('🔓 Тюрьма', `${p.name} выбрасывает дубль и выходит из тюрьмы!`);
                 } else {
                     p.jailTurns = (p.jailTurns || 0) + 1;
@@ -914,19 +919,26 @@
         }
 
         function processPayJail(peerId) {
-            const p = players[currentTurnIndex];
-            if (p.id === peerId && p.inJail && p.money >= 50) {
-                p.money -= 50;
-                p.inJail = false;
-                broadcastLog('💸 Тюрьма', `${p.name} заплатил $50 и выходит из тюрьмы.`);
-                broadcastState();
-            }
+            const p=players[currentTurnIndex];
+            if(gameOver||!p||p.id!==peerId||turnPhase!=='ROLL'||!p.inJail||p.money<50)return;
+            p.money-=50;p.inJail=false;p.jailTurns=0;
+            broadcastLog('💸 Тюрьма',p.name+' заплатил $50 и выходит из тюрьмы.');
+            broadcastState();
+        }
+        function processUseJailCard(peerId) {
+            const p=players[currentTurnIndex];
+            if(gameOver||!p||p.id!==peerId||turnPhase!=='ROLL'||!p.inJail||!p.jailCards?.length)return;
+            const type=p.jailCards.shift(),deck=type==='chance'?chanceDeck:chestDeck,source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
+            deck.push(source.find(card=>card.type==='jailFree'));
+            p.inJail=false;p.jailTurns=0;
+            broadcastLog('🃏 Тюрьма',p.name+' использует карту освобождения из тюрьмы.');
+            broadcastState();
         }
 
         function processBuy(peerId) {
             const p = players[currentTurnIndex];
             const cell = p && BOARD_CELLS[p.pos];
-            if (p && !auctionState && p.id === peerId && cell && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
+            if (p && !gameOver && !auctionState && p.id === peerId && turnPhase === 'ACTION' && cell && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
                 p.money -= cell.price;
                 ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0, mortgaged: false };
                 broadcastState(); broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
@@ -936,13 +948,16 @@
         function processBuild(peerId, cellId) {
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[cellId];
-            if (p.id !== peerId || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
+            if (!p || gameOver || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
             
             const group = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
             const groupOwned = group.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === p.id && !ownedCells[c.id].mortgaged);
             const minHouses = Math.min(...group.map(c => ownedCells[c.id]?.houses || 0));
-            if (cell.type === 'street' && groupOwned && !ownedCells[cellId].mortgaged && p.money >= cell.housePrice && ownedCells[cellId].houses < 5 && ownedCells[cellId].houses === minHouses) {
+            const currentBuildings=ownedCells[cellId].houses||0;
+            const stockAvailable=currentBuildings===4?bankHotels>0:bankHouses>0;
+            if (cell.type === 'street' && groupOwned && !ownedCells[cellId].mortgaged && p.money >= cell.housePrice && currentBuildings < 5 && currentBuildings === minHouses && stockAvailable) {
                 p.money -= cell.housePrice;
+                if(currentBuildings===4){bankHotels--;bankHouses+=4;}else bankHouses--;
                 ownedCells[cellId].houses++;
                 broadcastState();
                 broadcastLog('🏗️ Стройка', `${p.name} построил здание на «${cell.name}».`);
@@ -956,6 +971,7 @@
                 const group=BOARD_CELLS.filter(c=>c.type==='street'&&c.color===cell.color);
                 const maxHouses=Math.max(...group.map(c=>ownedCells[c.id]?.houses||0));
                 if(prop.houses!==maxHouses)return;
+                if(prop.houses===5){if(bankHouses<4)return;bankHotels++;bankHouses-=4;}else bankHouses++;
                 prop.houses--; const refund=Math.floor(cell.housePrice/2); p.money+=refund;
                 broadcastLog('🏠 Продажа здания',p.name+' продал здание на «'+cell.name+'» за $'+refund+'.');
             } else {
@@ -969,7 +985,7 @@
 
         function processEndTurn(peerId) {
             const p = players[currentTurnIndex];
-            if (p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
+            if (!gameOver && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -983,11 +999,11 @@
         }
 
         // --- АУКЦИОНЫ И ИПОТЕКА: решения подтверждает хост ---
-        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!cell.price||ownedCells[cell.id]||auctionState)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
-        function processAuctionBid(peerId,amount) { if(!auctionState||!auctionState.active||auctionState.passed.includes(peerId))return; const bidder=players.find(p=>p.id===peerId); amount=Math.floor(Number(amount)); if(!bidder||!Number.isFinite(amount)||amount<=auctionState.highBid||amount>bidder.money||amount<1)return; auctionState.highBid=amount; auctionState.highBidder=peerId; broadcastLog('🔨 Ставка',bidder.name+' предлагает $'+amount+'.'); broadcastState(); }
+        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!cell.price||ownedCells[cell.id]||auctionState)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
+        function processAuctionBid(peerId,amount) { if(gameOver||!auctionState||!auctionState.active||auctionState.passed.includes(peerId))return; const bidder=players.find(p=>p.id===peerId); amount=Math.floor(Number(amount)); if(!bidder||!Number.isFinite(amount)||amount<=auctionState.highBid||amount>bidder.money||amount<1)return; auctionState.highBid=amount; auctionState.highBidder=peerId; broadcastLog('🔨 Ставка',bidder.name+' предлагает $'+amount+'.'); broadcastState(); }
         function processAuctionPass(peerId) { if(!auctionState||!auctionState.active||peerId===auctionState.highBidder||!players.some(p=>p.id===peerId)||auctionState.passed.includes(peerId))return; auctionState.passed.push(peerId); const remaining=players.filter(p=>p.id!==auctionState.highBidder&&!auctionState.passed.includes(p.id)); if(!remaining.length){const winner=players.find(p=>p.id===auctionState.highBidder),cell=BOARD_CELLS[auctionState.cellId]; if(winner&&winner.money>=auctionState.highBid){winner.money-=auctionState.highBid;ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:false};broadcastLog('🏆 Аукцион',winner.name+' покупает «'+cell.name+'» за $'+auctionState.highBid+'.');}else broadcastLog('Аукцион','Торги завершены без покупателя.');auctionState=null;}else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.'); broadcastState(); }
-        function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price)return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); broadcastState(); }
-        function processRedeem(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],cost=cell?Math.ceil(cell.price*.55):Infinity; if(!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||!prop.mortgaged||p.money<cost)return; p.money-=cost;prop.mortgaged=false;broadcastLog('🏦 Выкуп',p.name+' выкупил «'+cell.name+'» за $'+cost+'.');broadcastState(); }
+        function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price)return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); broadcastState(); }
+        function processRedeem(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],cost=cell?Math.ceil(cell.price*.55):Infinity; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||!prop.mortgaged||p.money<cost)return; p.money-=cost;prop.mortgaged=false;broadcastLog('🏦 Выкуп',p.name+' выкупил «'+cell.name+'» за $'+cost+'.');broadcastState(); }
         function startAuction(){if(isHost)processAuctionStart(myId);else if(hostConn)hostConn.send({type:'AUCTION_START'});}
         function submitAuctionBid(){const amount=Number(document.getElementById('auction-bid-input').value);if(isHost)processAuctionBid(myId,amount);else if(hostConn)hostConn.send({type:'AUCTION_BID',amount});}
         function passAuction(){if(isHost)processAuctionPass(myId);else if(hostConn)hostConn.send({type:'AUCTION_PASS'});}
@@ -1103,11 +1119,16 @@
         // --- ИНТЕРФЕЙС ---
         function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
         function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function useJailCard() { if (isHost) processUseJailCard(myId); else if (hostConn) hostConn.send({ type: 'USE_JAIL_CARD' }); }
         function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
         function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, auctionState })); }
+        function broadcastState() {
+            syncUI();
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,dice:lastDice};
+            clientConns.forEach(c=>c.send(snapshot));
+        }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
         function appendLog(n, t) { 
             const b = document.getElementById('chat-messages'); 
