@@ -58,6 +58,7 @@ window.__MONOPOLY_UI_TEST__ = {
       centerAuctionVisible:!!centerAuction&&getComputedStyle(centerAuction).display!=='none',
       estateAuctionDisabled:!!estateAuction?.disabled,
       properties,
+      auctionActive:!!auctionState,
       bankHouses,
       bankHotels,
       selectedCellId,
