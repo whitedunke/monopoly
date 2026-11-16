@@ -2159,7 +2159,7 @@
             // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
             const buildHint=document.getElementById('estate-build-hint');
-            const buildPhaseAllowed=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&!gameOver;
+            const buildPhaseAllowed=!!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&!gameOver);
             const getBuildStatus=(cell)=>{
                 if(!cell||cell.type!=='street'||ownedCells[cell.id]?.ownerId!==myId)return {ok:false,reason:'Выберите свою улицу в списке имущества.'};
                 const asset=ownedCells[cell.id];
@@ -2168,16 +2168,39 @@
                 const mortgagedCount=group.filter(c=>ownedCells[c.id]?.ownerId===myId&&ownedCells[c.id]?.mortgaged).length;
                 if(!group.length||ownedCount!==group.length)return {ok:false,reason:'Цветовая группа собрана не полностью: '+ownedCount+' из '+group.length+' улиц.'};
                 if(mortgagedCount>0)return {ok:false,reason:'В цветовой группе есть заложенная улица. Сначала выкупите её.'};
-                if(asset.houses>=5)return {ok:false,reason:'На этой улице уже построен отель.'};
+                if((asset.houses||0)>=5)return {ok:false,reason:'На этой улице уже построен отель.'};
                 const minHouses=Math.min(...group.map(c=>ownedCells[c.id]?.houses||0));
                 if((asset.houses||0)!==minHouses){
                     const next=group.filter(c=>(ownedCells[c.id]?.houses||0)===minHouses).map(c=>c.name).join(', ');
                     return {ok:false,reason:'Соблюдайте равномерную застройку. Сначала стройте на: '+next+'.'};
                 }
-                const needsHotel=asset.houses===4;
+                const needsHotel=(asset.houses||0)===4;
                 if(needsHotel&&bankHotels===0)return {ok:false,reason:'В банке закончились отели.'};
                 if(!needsHotel&&bankHouses===0)return {ok:false,reason:'В банке закончились дома.'};
-                if(activePlayer.money<cell.housePrice)return {ok:false,reason:'Дом на «'+cell.name+'» стоит 
+                if(activePlayer.money<cell.housePrice)return {ok:false,reason:'Дом на «'+cell.name+'» стоит '+cell.housePrice+' долларов. У вас '+activePlayer.money+', не хватает '+(cell.housePrice-activePlayer.money)+'.'};
+                return {ok:true,reason:(needsHotel?'Отель':'Дом')+' на «'+cell.name+'» можно построить за '+cell.housePrice+' долларов.'};
+            };
+            const selectedBuildStatus=getBuildStatus(inspCell);
+            const alternativeBuildCell=buildPhaseAllowed?BOARD_CELLS.find(c=>c.type==='street'&&c.color!==inspCell.color&&ownedCells[c.id]?.ownerId===myId&&getBuildStatus(c).ok):null;
+            const buildTarget=buildPhaseAllowed?(selectedBuildStatus.ok?inspCell:alternativeBuildCell):null;
+            let buildReason='';
+            if(!isMyTurn)buildReason='Строить можно только во время вашего хода.';
+            else if(turnPhase!=='ACTION'&&turnPhase!=='ROLL')buildReason='Сначала завершите текущее действие.';
+            else if(pendingDebt)buildReason='Сначала погасите задолженность.';
+            else if(pendingCardAckId)buildReason='Сначала возьмите вытянутую карту.';
+            else if(auctionState)buildReason='Дождитесь завершения аукциона.';
+            else if(buildTarget&&buildTarget.id!==inspCell.id)buildReason=selectedBuildStatus.reason+' Можно построить на «'+buildTarget.name+'» за '+buildTarget.housePrice+' долларов. Нажмите кнопку — дом появится на этой улице.';
+            else buildReason=selectedBuildStatus.reason;
+            const buildTargetAsset=buildTarget?ownedCells[buildTarget.id]:null;
+            buildButton.disabled=!buildTarget;
+            buildButton.style.display='inline-flex';
+            buildButton.dataset.cellId=buildTarget?String(buildTarget.id):'';
+            if(buildTarget){
+                const hotel=(buildTargetAsset.houses||0)===4;
+                buildButton.textContent=(hotel?'Построить отель: ':'Построить дом: ')+buildTarget.name+' ('+buildTarget.housePrice+')';
+            }else buildButton.textContent='Построить дом';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(buildTarget?'ready':(isMyTurn?'warning':''));}
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
