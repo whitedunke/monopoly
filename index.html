@@ -198,7 +198,7 @@
             50% { transform: scale(0.6); opacity: 0.1; }
         }
 
-        .purchase-action{width:min(100%,560px);min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;margin:0 auto 2px;position:relative;z-index:5}
+        .purchase-action{width:min(100%,560px);display:flex;flex-direction:column;align-items:center;gap:5px;margin:10px auto 12px;position:relative;z-index:5}
         .purchase-action #buy-btn{width:100%;max-width:420px;min-height:48px;padding:12px 20px;font-size:16px;font-weight:900;border:2px solid #fff;box-shadow:0 5px 16px rgba(37,99,235,.28);cursor:pointer}
         #purchase-hint{min-height:16px;text-align:center;font-size:12px;font-weight:700;color:#64748b}
         .action-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
@@ -424,7 +424,7 @@
                         </div>
                         <div class="purchase-action">
                             <button class="btn" id="buy-btn" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); display: none;" onclick="buyCurrentCell()">Купить недвижимость</button>
-                            <div id="purchase-hint" role="status" aria-live="polite">После броска здесь появится предложение о покупке, если клетка свободна.</div>
+                            <div id="purchase-hint" role="status" aria-live="polite">После броска кнопка появится здесь, если клетка свободна.</div>
                         </div>
                     </div>
 
@@ -1274,41 +1274,17 @@
             
             const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
             const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
-            const buyButton=document.getElementById('buy-btn');
-            const purchaseHint=document.getElementById('purchase-hint');
+            const buyButton = document.getElementById('buy-btn');
+            const purchaseHint = document.getElementById('purchase-hint');
             buyButton.style.display = (canBuy && !auctionState) ? 'block' : 'none';
-            if(canBuy&&!auctionState){buyButton.innerText='Купить «'+myPosCell.name+'» — 
-            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
-            const selectedOwned = ownedCells[inspCell.id];
-            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
-            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
-            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
-            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
-            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
-            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
-            renderAuction();
-
-            let canBuild = false;
-            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
-                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
-+myPosCell.price;purchaseHint.innerText='Вы можете купить эту собственность или отказаться и провести аукцион.';}
-            else if(auctionState)purchaseHint.innerText='Идёт аукцион — обычная покупка недоступна.';
-            else if(turnPhase==='ROLL')purchaseHint.innerText=activePlayer.inJail?'Вы в тюрьме: выберите способ выхода.':'Бросьте кубики, чтобы узнать, на какую клетку попадёте.';
-            else if(!isMyTurn)purchaseHint.innerText='Ожидайте своего хода.';
-            else if(myPosCell.price&&ownedCells[myPosCell.id])purchaseHint.innerText='Эта собственность уже занята.';
-            else purchaseHint.innerText='На текущей клетке нет недвижимости для покупки.';
+            if (canBuy && !auctionState) {
+                buyButton.innerText = `Купить «${myPosCell.name}» — ${myPosCell.price}`;
+                purchaseHint.innerText = 'Вы можете купить эту собственность или отказаться и провести аукцион.';
+            } else if (auctionState) purchaseHint.innerText = 'Идёт аукцион — обычная покупка недоступна.';
+            else if (turnPhase === 'ROLL') purchaseHint.innerText = activePlayer.inJail ? 'Вы в тюрьме: выберите способ выхода.' : 'Бросьте кубики, чтобы узнать, на какую клетку попадёте.';
+            else if (!isMyTurn) purchaseHint.innerText = 'Ожидайте своего хода.';
+            else if (myPosCell.price && ownedCells[myPosCell.id]) purchaseHint.innerText = 'Эта собственность уже занята.';
+            else purchaseHint.innerText = 'На текущей клетке нет недвижимости для покупки.';
             document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
             const selectedOwned = ownedCells[inspCell.id];
             const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
