@@ -64,6 +64,7 @@ const path = require('path');
       const manage = document.querySelector('.estate-open-manager');
       const board = document.querySelector('.board');
       const actions = [...document.querySelectorAll('.estate-actions .btn')];
+      const actionsBottom = actions.reduce((bottom,b) => Math.max(bottom,b.getBoundingClientRect().bottom), 0);
       const buttonsInside = actions.every(b => {
         const r=b.getBoundingClientRect(), p=panel.getBoundingClientRect();
         return r.left >= p.left-1 && r.right <= p.right+1;
@@ -76,6 +77,7 @@ const path = require('path');
         walletOverlap:overlap(rect(player),rect(balance)),
         managerOverlap:overlap(rect(heading),rect(manage)),
         buttonsInside,
+        actionsBottom,
         panelScrollWidth:panel.scrollWidth, panelClientWidth:panel.clientWidth
       };
     });
@@ -88,6 +90,8 @@ const path = require('path');
     if (metrics.panel && metrics.panel.right > c.width + 1) problems.push('estate panel outside viewport');
     if (metrics.board && (metrics.board.x < -1 || metrics.board.right > c.width + 1)) problems.push('board outside viewport');
     if (!metrics.boardSquare) problems.push('board is not square');
+    if (c.width >= 761 && c.width <= 1100 && metrics.board && metrics.board.width < 320) problems.push('tablet board is too small');
+    if (c.width > 1100 && metrics.actionsBottom > c.height + 1) problems.push('desktop action buttons below viewport');
     if (pageErrors.length) problems.push('browser JS errors: ' + pageErrors.join(' | '));
 
     results.push({ case:c.name, metrics, problems, pageErrors });
