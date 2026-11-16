@@ -1970,7 +1970,7 @@
             }
         }
 
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function buildHouse(){const b=document.getElementById('estate-build-btn'),id=b&&b.dataset.cellId!==''?Number(b.dataset.cellId):selectedCellId;if(id===null||!Number.isInteger(id))return;if(isHost)processBuild(myId,id);else if(hostConn)hostConn.send({type:'BUILD',cellId:id});}
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
         function broadcastState() {
@@ -2163,10 +2163,12 @@
             else if(!buildStockAvailable)buildReason=buildCount===4?'В банке закончились отели':'В банке закончились дома';
             else if(activePlayer.money<inspCell.housePrice)buildReason='Недостаточно денег: дом стоит $'+inspCell.housePrice;
             else if(pendingDebt||pendingCardAckId||auctionState)buildReason='Завершите текущее действие перед строительством';
-            buildButton.disabled=!canBuildSelected;
-            buildButton.style.display='inline-flex';
-            buildButton.textContent=buildCount===4?'🏨 Построить отель ($'+inspCell.housePrice+')':'🏠 Построить дом ($'+inspCell.housePrice+')';
-            buildButton.title=canBuildSelected?'Построить на выбранной улице':buildReason;
+            const canBuildOn=c=>{const g=BOARD_CELLS.filter(x=>x.type==='street'&&x.color===c.color),a=ownedCells[c.id],n=a?.houses||0;return c.type==='street'&&a?.ownerId===myId&&g.length&&g.every(x=>ownedCells[x.id]?.ownerId===myId&&!ownedCells[x.id]?.mortgaged)&&n===Math.min(...g.map(x=>ownedCells[x.id]?.houses||0))&&n<5&&activePlayer.money>=c.housePrice&&(n===4?bankHotels:bankHouses)>0;};
+            const allowed=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&!gameOver;
+            const target=allowed?(canBuildSelected?inspCell:BOARD_CELLS.find(c=>c.id!==inspCell.id&&canBuildOn(c))):null;
+            buildButton.disabled=!target;buildButton.style.display='inline-flex';buildButton.dataset.cellId=target?String(target.id):'';
+            buildButton.textContent=target?((ownedCells[target.id].houses===4?'🏨 Отель: ':'🏠 Дом: ')+target.name+' — '+target.housePrice):'🏠 Строительство';
+            buildButton.title=target&&target.id!==inspCell.id?'На выбранной улице строить нельзя. Доступно строительство на '+target.name+'.':buildReason;
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
