@@ -764,7 +764,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
