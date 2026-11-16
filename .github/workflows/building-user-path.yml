@@ -1,0 +1,33 @@
+name: Monopoly building user-path autotest
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/building-user-path.browser.js'
+      - 'tests/run-building-user-path.cjs'
+      - '.github/workflows/building-user-path.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/building-user-path.browser.js'
+      - 'tests/run-building-user-path.cjs'
+      - '.github/workflows/building-user-path.yml'
+  workflow_dispatch:
+
+jobs:
+  building-user-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: npm install --no-save playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run building user-path tests
+        run: node tests/run-building-user-path.cjs
