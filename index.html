@@ -563,28 +563,49 @@
             { id: 39, name: "Арбат", type: "street", color: "var(--c-darkblue)", price: 400, rent: 50, housePrice: 200 }
         ];
 
+        // Полные колоды по 16 карт: перемешиваются в начале партии и идут по кругу.
         const CHANCE_CARDS = [
-            { text: "Отправляйтесь в Тюрьму.", action: (p) => sendToJail(p) },
-            { text: "Банк выплачивает дивиденды. Получите $50.", action: (p) => p.money += 50 },
-            { text: "Оплата лечения. Заплатите $100.", action: (p) => p.money -= 100 },
-            { text: "Вернитесь на клетку ВПЕРЕД.", action: (p) => { p.pos = 0; p.money += 200; } },
-            { text: "Вы выиграли в лотерею! Получите $150.", action: (p) => p.money += 150 },
-            { text: "Штраф за превышение скорости. Заплатите $15.", action: (p) => p.money -= 15 }
+            {text:"Перейдите на «ВПЕРЁД» и получите $200.",type:"move",pos:0,go:true},
+            {text:"Отправляйтесь на Арбат.",type:"move",pos:39,go:true},
+            {text:"Отправляйтесь на Рижскую железную дорогу.",type:"move",pos:5,go:true},
+            {text:"Ближайшая железная дорога: заплатите двойную ренту владельцу.",type:"nearestRail"},
+            {text:"Ближайшая коммунальная служба: заплатите 10-кратную сумму кубиков.",type:"nearestUtility"},
+            {text:"Банк выплачивает дивиденды. Получите $50.",type:"cash",amount:50},
+            {text:"Карта освобождения из тюрьмы.",type:"jailFree"},
+            {text:"Вернитесь на три клетки назад.",type:"back",amount:3},
+            {text:"Отправляйтесь в тюрьму.",type:"jail"},
+            {text:"Ремонт улиц: $25 за дом и $100 за отель.",type:"repairs",house:25,hotel:100},
+            {text:"Штраф за превышение скорости. Заплатите $15.",type:"cash",amount:-15},
+            {text:"Вы выиграли конкурс красоты. Получите $100.",type:"cash",amount:100},
+            {text:"Получите $150.",type:"cash",amount:150},
+            {text:"Отправляйтесь на площадь Маяковского.",type:"move",pos:24,go:true},
+            {text:"Отправляйтесь на Курскую железную дорогу.",type:"move",pos:15,go:true},
+            {text:"Оплата обучения. Заплатите $50.",type:"cash",amount:-50}
         ];
-
         const CHEST_CARDS = [
-            { text: "Вас выбрали председателем совета директоров. Заплатите $50 каждому игроку.", action: (p) => {
-                players.forEach(other => {
-                    if (other.id !== p.id) { p.money -= 50; other.money += 50; }
-                });
-            }},
-            { text: "Возврат налогового сбора. Получите $20.", action: (p) => p.money += 20 },
-            { text: "Продажа акций. Получите $50.", action: (p) => p.money += 50 },
-            { text: "Наследство. Получите $100.", action: (p) => p.money += 100 },
-            { text: "Срочный ремонт. Заплатите $40.", action: (p) => p.money -= 40 },
-            { text: "Отправляйтесь в Тюрьму.", action: (p) => sendToJail(p) }
+            {text:"Перейдите на «ВПЕРЁД» и получите $200.",type:"move",pos:0,go:true},
+            {text:"Ошибка банка в вашу пользу. Получите $200.",type:"cash",amount:200},
+            {text:"Оплатите услуги врача. Заплатите $50.",type:"cash",amount:-50},
+            {text:"Продажа акций. Получите $50.",type:"cash",amount:50},
+            {text:"Карта освобождения из тюрьмы.",type:"jailFree"},
+            {text:"Отправляйтесь в тюрьму.",type:"jail"},
+            {text:"День рождения: получите $10 от каждого игрока.",type:"birthday"},
+            {text:"Страховая выплата. Получите $100.",type:"cash",amount:100},
+            {text:"Больничный сбор. Заплатите $100.",type:"cash",amount:-100},
+            {text:"Оплатите обучение. Заплатите $50.",type:"cash",amount:-50},
+            {text:"Возврат налогового сбора. Получите $20.",type:"cash",amount:20},
+            {text:"Получите $25 за консультационные услуги.",type:"cash",amount:25},
+            {text:"Выигрыш в лотерею. Получите $100.",type:"cash",amount:100},
+            {text:"Наследство. Получите $100.",type:"cash",amount:100},
+            {text:"Ремонт улиц: $40 за дом и $115 за отель.",type:"repairs",house:40,hotel:115},
+            {text:"Сбор за услуги. Заплатите $50.",type:"cash",amount:-50}
         ];
-
+        function shuffleDeck(deck) {
+            for (let i=deck.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+            return deck;
+        }
+        let chanceDeck=[], chestDeck=[];
+        
         function getGridCoords(index) {
             if (index <= 10) return { row: 1, col: 1 + index };
             if (index <= 20) return { row: 1 + (index - 10), col: 11 };
@@ -598,8 +619,9 @@
         let pendingTrade = null;
         let consecutiveDoubles = 0;
         let lastDice = [1, 1];
-        let gameOver = false;
+        let gameOver = false, winnerId = null;
         let auctionState = null;
+        let bankHouses = 32, bankHotels = 12;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -679,7 +701,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0 }];
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -710,7 +732,7 @@
         function handleHostData(data, conn) {
             if (data.type === 'JOIN' && players.length < 6) {
                 const idx = players.length;
-                players.push({ id: conn.peer, name: data.name, money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0 });
+                players.push({ id: conn.peer, name: data.name, money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0, jailCards: [] });
                 broadcastState(); broadcastLog('Система', `${data.name} в игре.`);
             } else if (data.type === 'ROLL') { processRoll(conn.peer); }
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
@@ -753,37 +775,63 @@
             broadcastState();
         }
 
-        function handleBankruptcy(p, creditorId = null) {
-            broadcastLog('☠️ Банкротство', `${p.name} обанкротился и выбывает из игры!`);
-            const index = players.indexOf(p);
-            if (index > -1) players.splice(index, 1);
-            
-            Object.keys(ownedCells).forEach(cellId => {
-                if (ownedCells[cellId].ownerId === p.id) {
-                    if (creditorId && players.find(pl => pl.id === creditorId)) {
-                        const creditor = players.find(pl => pl.id === creditorId);
-                        ownedCells[cellId].ownerId = creditorId;
-                        ownedCells[cellId].color = creditor.color;
-                    } else {
-                        delete ownedCells[cellId];
-                    }
-                }
+        function handleBankruptcy(p,creditorId=null) {
+            if(!p||!players.some(x=>x.id===p.id))return;
+            const removedIndex=players.findIndex(x=>x.id===p.id),creditor=creditorId?players.find(x=>x.id===creditorId):null;
+            broadcastLog('☠️ Банкротство',p.name+' обанкротился и выбывает из игры.');
+            Object.keys(ownedCells).forEach(id=>{
+                const asset=ownedCells[id]; if(asset.ownerId!==p.id)return;
+                if(creditor){asset.ownerId=creditor.id;asset.color=creditor.color;if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;asset.houses=0;}}
+                else {if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;}delete ownedCells[id];}
             });
-            if (currentTurnIndex >= players.length) currentTurnIndex = 0;
-            turnPhase = 'ROLL';
+            if(removedIndex<currentTurnIndex)currentTurnIndex--;
+            players.splice(removedIndex,1);
+            consecutiveDoubles=0; auctionState=null;
+            if(players.length<=1){gameOver=true;winnerId=players[0]?.id||null;turnPhase='GAME_OVER';broadcastLog('🏆 Победа',players[0]?players[0].name+' побеждает! Все соперники обанкротились.':'Партия завершена без победителя.');}
+            else {if(currentTurnIndex>=players.length)currentTurnIndex=0;turnPhase='ROLL';}
             broadcastState();
         }
 
-        function drawCard(type, p) {
-            let card;
-            if (type === 'chance') card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
-            else card = CHEST_CARDS[Math.floor(Math.random() * CHEST_CARDS.length)];
-            
-            broadcastLog('🃏 Карта', `${p.name} тянет карту: ${card.text}`);
-            card.action(p);
-            
-            if (p.money < 0) handleBankruptcy(p, null);
-            else { broadcastState(); syncUI(); }
+        function resolveCardMovement(p,target,collectGo=true) {
+            const old=p.pos;
+            if(target<old&&collectGo){p.money+=200;broadcastLog('💰 Зарплата',p.name+' проходит «ВПЕРЁД» и получает $200.');}
+            p.pos=target;
+            const cell=BOARD_CELLS[target], asset=ownedCells[target];
+            if(asset&&asset.ownerId!==p.id&&!asset.mortgaged){
+                const owner=players.find(pl=>pl.id===asset.ownerId),rent=calculateRent(target,lastDice[0]+lastDice[1]);
+                if(owner&&rent){p.money-=rent;owner.money+=rent;broadcastLog('💸 Рента',p.name+' платит $'+rent+' за «'+cell.name+'».');}
+            }
+            if(cell.type==='tax'){p.money-=cell.price;broadcastLog('💎 Налог',p.name+' платит $'+cell.price+'.');}
+        }
+        function drawCard(type,p) {
+            const deck=type==='chance'?chanceDeck:chestDeck, source=type==='chance'?CHANCE_CARDS:CHEST_CARDS;
+            if(!deck.length)deck.push(...shuffleDeck([...source]));
+            const card=deck.shift();
+            broadcastLog('🃏 '+(type==='chance'?'Шанс':'Общественная казна'),p.name+': '+card.text);
+            switch(card.type){
+                case 'cash': p.money+=card.amount; break;
+                case 'move': resolveCardMovement(p,card.pos,card.go!==false); break;
+                case 'back': resolveCardMovement(p,(p.pos-card.amount+40)%40,false); break;
+                case 'jail': sendToJail(p); break;
+                case 'jailFree': p.jailCards=p.jailCards||[]; p.jailCards.push(type); break;
+                case 'birthday': players.filter(x=>x.id!==p.id).forEach(x=>{x.money-=10;p.money+=10;}); break;
+                case 'repairs': {
+                    let due=0;
+                    Object.keys(ownedCells).forEach(id=>{if(ownedCells[id].ownerId===p.id){const n=ownedCells[id].houses||0;due+=n===5?card.hotel:n*card.house;}});
+                    p.money-=due; broadcastLog('🏠 Ремонт',p.name+' платит $'+due+'.'); break;
+                }
+                case 'nearestRail': {
+                    const target=[5,15,25,35].find(x=>x>p.pos)??5; resolveCardMovement(p,target,target<=p.pos);
+                    const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
+                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const rent=calculateRent(target,lastDice[0]+lastDice[1])*2;p.money-=rent;owner.money+=rent;broadcastLog('🚂 Двойная рента','$'+rent+'.');} break;
+                }
+                case 'nearestUtility': {
+                    const target=[12,28].find(x=>x>p.pos)??12; resolveCardMovement(p,target,target<=p.pos);
+                    const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
+                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);p.money-=rent;owner.money+=rent;broadcastLog('💡 Коммунальная служба','$'+rent+'.');} break;
+                }
+            }
+            if(p.money<0)handleBankruptcy(p,null);else broadcastState();
         }
 
         function processRoll(peerId) {
