@@ -1454,7 +1454,11 @@
             else if(buildCount>=5)buildReason='На этой улице уже построен отель';
             else if(buildCount!==buildMin)buildReason='Соблюдайте равномерную застройку: сначала улица с наименьшим числом домов';
             else if(!buildStockAvailable)buildReason=buildCount===4?'В банке закончились отели':'В банке закончились дома';
-            else if(activePlayer.money<inspCell.housePrice)buildReason='Недостаточно денег: дом стоит 
+            else if(activePlayer.money<inspCell.housePrice)buildReason='Недостаточно денег: дом стоит $'+inspCell.housePrice;
+            else if(pendingDebt||pendingCardAckId||auctionState)buildReason='Завершите текущее действие перед строительством';
+            buildButton.disabled=!canBuildSelected;
+            buildButton.textContent=buildCount===4?'🏨 Построить отель ($'+inspCell.housePrice+')':'🏠 Построить дом ($'+inspCell.housePrice+')';
+            buildButton.title=canBuildSelected?'Построить на выбранной улице':buildReason;
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
