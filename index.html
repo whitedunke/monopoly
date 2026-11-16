@@ -387,6 +387,9 @@
                             <button class="btn" id="roll-btn" onclick="rollDice()">Бросить кубики 🎲</button>
                             <button class="btn" id="pay-jail-btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); display: none;" onclick="payJail()">Заплатить $50 💸</button>
                             <button class="btn" id="buy-btn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: none;" onclick="buyCurrentCell()">Купить</button>
+            <button class="btn" id="auction-start-btn" style="background:#9a6b2f;display:none;" onclick="startAuction()">Аукцион</button>
+            <button class="btn" id="mortgage-btn" style="background:#8b5cf6;display:none;" onclick="mortgageSelected()">Заложить</button>
+            <button class="btn" id="redeem-btn" style="background:#0f766e;display:none;" onclick="redeemSelected()">Выкупить</button>
                             <button class="btn" id="build-btn" style="background: linear-gradient(135deg, #10b981, #047857); display: none;" onclick="buildHouse()">Построить 🏠</button>
                             <button class="btn" id="trade-btn" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: none;" onclick="openTradeModal()">Обмен 🤝</button>
                             <button class="btn" id="end-turn-btn" style="background: linear-gradient(135deg, #64748b, #475569); display: none;" onclick="endTurn()">Завершить ход ⏭️</button>
@@ -456,6 +459,8 @@
             </div>
         </div>
     </div>
+
+    <div class="modal-overlay" id="modal-auction"><div class="modal-content"><div class="modal-title">Аукцион недвижимости</div><div id="auction-details" style="line-height:1.7;margin-bottom:14px;"></div><div class="input-group"><label for="auction-bid-input">Ваша ставка ($)</label><input type="number" id="auction-bid-input" min="1" step="1" value="10" style="width:100%;padding:10px;border-radius:8px;"></div><div style="display:flex;gap:10px;"><button class="btn" onclick="submitAuctionBid()">Сделать ставку</button><button class="btn btn-secondary" onclick="passAuction()">Пас</button></div></div></div>
 
     <script>
         // Иконки для фишек игроков
@@ -554,6 +559,7 @@
         let consecutiveDoubles = 0;
         let lastDice = [1, 1];
         let gameOver = false;
+        let auctionState = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -670,6 +676,11 @@
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
             else if (data.type === 'BUY') { processBuy(conn.peer); }
             else if (data.type === 'BUILD') { processBuild(conn.peer, data.cellId); }
+            else if (data.type === 'AUCTION_START') processAuctionStart(conn.peer);
+            else if (data.type === 'AUCTION_BID') processAuctionBid(conn.peer, data.amount);
+            else if (data.type === 'AUCTION_PASS') processAuctionPass(conn.peer);
+            else if (data.type === 'MORTGAGE') processMortgage(conn.peer, data.cellId);
+            else if (data.type === 'REDEEM') processRedeem(conn.peer, data.cellId);
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
@@ -684,6 +695,8 @@
             if (data.type === 'STATE') {
                 players = data.players; ownedCells = data.ownedCells;
                 currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase;
+                auctionState = data.auctionState || null;
+                renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
@@ -849,7 +862,7 @@
 
         function processEndTurn(peerId) {
             const p = players[currentTurnIndex];
-            if (p && p.id === peerId && turnPhase === 'ACTION') {
+            if (p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -860,6 +873,2470 @@
                 }
                 broadcastState();
             }
+        }
+
+        // --- АУКЦИОНЫ И ИПОТЕКА: все изменения состояния подтверждает хост ---
+        function processAuctionStart(peerId) {
+            const p = players[currentTurnIndex], cell = p && BOARD_CELLS[p.pos];
+            if (!p || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !cell.price || ownedCells[cell.id] || auctionState) return;
+            auctionState = { cellId:cell.id, highBid:0, highBidder:null, passed:[], active:true };
+            broadcastLog('🔨 Аукцион', 'Торги за «' + cell.name + '» открыты. Минимальная ставка $1.'); broadcastState();
+        }
+        function processAuctionBid(peerId, amount) {
+            if (!auctionState || !auctionState.active || auctionState.passed.includes(peerId)) return;
+            const bidder = players.find(p => p.id === peerId); amount = Math.floor(Number(amount));
+            if (!bidder || !Number.isFinite(amount) || amount <= auctionState.highBid || amount > bidder.money || amount < 1) return;
+            auctionState.highBid = amount; auctionState.highBidder = peerId;
+            broadcastLog('🔨 Ставка', bidder.name + ' предлагает 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, auctionState })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + amount + '.'); broadcastState();
+        }
+        function processAuctionPass(peerId) {
+            if (!auctionState || !auctionState.active || !players.some(p => p.id === peerId) || auctionState.passed.includes(peerId)) return;
+            auctionState.passed.push(peerId);
+            const contenders = players.filter(p => p.id !== auctionState.highBidder && !auctionState.passed.includes(p.id));
+            if (contenders.length === 0) {
+                const winner = players.find(p => p.id === auctionState.highBidder), cell = BOARD_CELLS[auctionState.cellId];
+                if (winner && winner.money >= auctionState.highBid) { winner.money -= auctionState.highBid; ownedCells[cell.id] = { ownerId:winner.id, color:winner.color, houses:0, mortgaged:false }; broadcastLog('🏆 Аукцион', winner.name + ' покупает «' + cell.name + '» за 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + auctionState.highBid + '.'); }
+                else broadcastLog('Аукцион', 'Торги завершены без покупателя.');
+                auctionState = null;
+            } else broadcastLog('Аукцион', (players.find(p => p.id === peerId)?.name || 'Игрок') + ' пасует.');
+            broadcastState();
+        }
+        function processMortgage(peerId, cellId) {
+            const p = players[currentTurnIndex], cell = BOARD_CELLS[cellId], prop = ownedCells[cellId];
+            if (!p || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !prop || prop.ownerId !== p.id || prop.mortgaged || !cell.price) return;
+            if (BOARD_CELLS.some(c => c.type === 'street' && c.color === cell.color && ownedCells[c.id]?.ownerId === p.id && (ownedCells[c.id].houses || 0) > 0)) return;
+            prop.mortgaged = true; const payout = Math.floor(cell.price / 2); p.money += payout;
+            broadcastLog('🏦 Ипотека', p.name + ' заложил «' + cell.name + '» и получил 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + payout + '.'); broadcastState();
+        }
+        function processRedeem(peerId, cellId) {
+            const p = players[currentTurnIndex], cell = BOARD_CELLS[cellId], prop = ownedCells[cellId];
+            const cost = cell ? Math.ceil(cell.price * 0.55) : Infinity;
+            if (!p || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !prop || prop.ownerId !== p.id || !prop.mortgaged || p.money < cost) return;
+            p.money -= cost; prop.mortgaged = false; broadcastLog('🏦 Выкуп', p.name + ' выкупил «' + cell.name + '» за 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + cost + '.'); broadcastState();
+        }
+        function startAuction() { if (isHost) processAuctionStart(myId); else if (hostConn) hostConn.send({type:'AUCTION_START'}); }
+        function submitAuctionBid() { const amount = Number(document.getElementById('auction-bid-input').value); if (isHost) processAuctionBid(myId, amount); else if (hostConn) hostConn.send({type:'AUCTION_BID', amount}); }
+        function passAuction() { if (isHost) processAuctionPass(myId); else if (hostConn) hostConn.send({type:'AUCTION_PASS'}); }
+        function mortgageSelected() { if (isHost) processMortgage(myId, selectedCellId); else if (hostConn) hostConn.send({type:'MORTGAGE', cellId:selectedCellId}); }
+        function redeemSelected() { if (isHost) processRedeem(myId, selectedCellId); else if (hostConn) hostConn.send({type:'REDEEM', cellId:selectedCellId}); }
+        function renderAuction() {
+            const modal = document.getElementById('modal-auction'), details = document.getElementById('auction-details'); if (!modal || !details) return;
+            if (!auctionState || !auctionState.active) { modal.style.display = 'none'; return; }
+            const cell = BOARD_CELLS[auctionState.cellId], leader = players.find(p => p.id === auctionState.highBidder), me = players.find(p => p.id === myId);
+            details.innerHTML = '<b>' + cell.name + '</b><br>Текущая ставка: <b>
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + auctionState.highBid + '</b><br>Лидер: ' + (leader ? leader.name : 'нет') + '<br>Пас: ' + auctionState.passed.length + '/' + players.length;
+            modal.style.display = 'flex'; const input = document.getElementById('auction-bid-input');
+            if (input && me) { input.min = auctionState.highBid + 1; input.max = me.money; if (Number(input.value) <= auctionState.highBid) input.value = auctionState.highBid + 1; }
+            const alreadyPassed = me && auctionState.passed.includes(me.id);
+            modal.querySelectorAll('button').forEach(b => b.disabled = !me || alreadyPassed || (b.textContent.includes('Сделать') && me.money <= auctionState.highBid));
+        }
+
+        // --- ТОРГОВЛЯ ---
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + amount + '.'); broadcastState();
+        }
+        function processAuctionPass(peerId) {
+            if (!auctionState || !auctionState.active || !players.some(p => p.id === peerId) || auctionState.passed.includes(peerId)) return;
+            auctionState.passed.push(peerId);
+            const contenders = players.filter(p => p.id !== auctionState.highBidder && !auctionState.passed.includes(p.id));
+            if (contenders.length === 0) {
+                const winner = players.find(p => p.id === auctionState.highBidder), cell = BOARD_CELLS[auctionState.cellId];
+                if (winner && winner.money >= auctionState.highBid) { winner.money -= auctionState.highBid; ownedCells[cell.id] = { ownerId:winner.id, color:winner.color, houses:0, mortgaged:false }; broadcastLog('🏆 Аукцион', winner.name + ' покупает «' + cell.name + '» за 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + auctionState.highBid + '.'); }
+                else broadcastLog('Аукцион', 'Торги завершены без покупателя.');
+                auctionState = null;
+            } else broadcastLog('Аукцион', (players.find(p => p.id === peerId)?.name || 'Игрок') + ' пасует.');
+            broadcastState();
+        }
+        function processMortgage(peerId, cellId) {
+            const p = players[currentTurnIndex], cell = BOARD_CELLS[cellId], prop = ownedCells[cellId];
+            if (!p || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !prop || prop.ownerId !== p.id || prop.mortgaged || !cell.price) return;
+            if (BOARD_CELLS.some(c => c.type === 'street' && c.color === cell.color && ownedCells[c.id]?.ownerId === p.id && (ownedCells[c.id].houses || 0) > 0)) return;
+            prop.mortgaged = true; const payout = Math.floor(cell.price / 2); p.money += payout;
+            broadcastLog('🏦 Ипотека', p.name + ' заложил «' + cell.name + '» и получил 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + payout + '.'); broadcastState();
+        }
+        function processRedeem(peerId, cellId) {
+            const p = players[currentTurnIndex], cell = BOARD_CELLS[cellId], prop = ownedCells[cellId];
+            const cost = cell ? Math.ceil(cell.price * 0.55) : Infinity;
+            if (!p || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !prop || prop.ownerId !== p.id || !prop.mortgaged || p.money < cost) return;
+            p.money -= cost; prop.mortgaged = false; broadcastLog('🏦 Выкуп', p.name + ' выкупил «' + cell.name + '» за 
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + cost + '.'); broadcastState();
+        }
+        function startAuction() { if (isHost) processAuctionStart(myId); else if (hostConn) hostConn.send({type:'AUCTION_START'}); }
+        function submitAuctionBid() { const amount = Number(document.getElementById('auction-bid-input').value); if (isHost) processAuctionBid(myId, amount); else if (hostConn) hostConn.send({type:'AUCTION_BID', amount}); }
+        function passAuction() { if (isHost) processAuctionPass(myId); else if (hostConn) hostConn.send({type:'AUCTION_PASS'}); }
+        function mortgageSelected() { if (isHost) processMortgage(myId, selectedCellId); else if (hostConn) hostConn.send({type:'MORTGAGE', cellId:selectedCellId}); }
+        function redeemSelected() { if (isHost) processRedeem(myId, selectedCellId); else if (hostConn) hostConn.send({type:'REDEEM', cellId:selectedCellId}); }
+        function renderAuction() {
+            const modal = document.getElementById('modal-auction'), details = document.getElementById('auction-details'); if (!modal || !details) return;
+            if (!auctionState || !auctionState.active) { modal.style.display = 'none'; return; }
+            const cell = BOARD_CELLS[auctionState.cellId], leader = players.find(p => p.id === auctionState.highBidder), me = players.find(p => p.id === myId);
+            details.innerHTML = '<b>' + cell.name + '</b><br>Текущая ставка: <b>
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
+            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function processTradeAccept(offer) {
+            const p1 = players.find(p => p.id === offer.fromId);
+            const p2 = players.find(p => p.id === offer.toId);
+            if (!p1 || !p2) return;
+
+            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
+            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
+
+            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
+            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
+
+            broadcastState();
+            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const inspCell = BOARD_CELLS[selectedCellId || 0];
+            const inspOwner = ownedCells[inspCell.id];
+            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
+            document.getElementById('insp-title').innerText = inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            document.getElementById('insp-meta').innerText = metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
+            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
+            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
+            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            document.getElementById('buy-btn').style.display = canBuy ? 'inline-block' : 'none';
+
+            let canBuild = false;
+            if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + auctionState.highBid + '</b><br>Лидер: ' + (leader ? leader.name : 'нет') + '<br>Пас: ' + auctionState.passed.length + '/' + players.length;
+            modal.style.display = 'flex'; const input = document.getElementById('auction-bid-input');
+            if (input && me) { input.min = auctionState.highBid + 1; input.max = me.money; if (Number(input.value) <= auctionState.highBid) input.value = auctionState.highBid + 1; }
+            const alreadyPassed = me && auctionState.passed.includes(me.id);
+            modal.querySelectorAll('button').forEach(b => b.disabled = !me || alreadyPassed || (b.textContent.includes('Сделать') && me.money <= auctionState.highBid));
         }
 
         // --- ТОРГОВЛЯ ---
