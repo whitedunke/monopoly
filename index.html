@@ -2114,8 +2114,8 @@
 
             const inspCell = BOARD_CELLS[selectedCellId === null ? (me?me.pos:0) : selectedCellId];
             const inspOwner = ownedCells[inspCell.id];
-            document.getElementById('insp-color').style.background = inspCell.color || '#cbd5e1';
-            document.getElementById('insp-title').innerText = inspCell.name;
+            const inspColorEl=document.getElementById('insp-color');if(inspColorEl)inspColorEl.style.background=inspCell.color||'#cbd5e1';
+            const inspTitleEl=document.getElementById('insp-title');if(inspTitleEl)inspTitleEl.innerText=inspCell.name;
             
             let metaText = '';
             if (inspCell.price) {
@@ -2127,7 +2127,7 @@
             } else {
                 metaText = inspCell.sub || '';
             }
-            document.getElementById('insp-meta').innerText = metaText;
+            const inspMetaEl=document.getElementById('insp-meta');if(inspMetaEl)inspMetaEl.innerText=metaText;
 
             const isMyTurn = activePlayer && activePlayer.id === myId;
             const debtPanel=document.getElementById('debt-panel'),myDebt=!!(pendingDebt&&pendingDebt.debtorId===myId);
