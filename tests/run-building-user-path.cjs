@@ -119,6 +119,55 @@ async function runCase(browser, name, viewport, seed, action) {
       check(after.money === 20, 'incorrect balance after construction');
     });
 
+    // Tax spaces are not purchasable. Use the visible Roll button and deterministic dice.
+    for (const taxCase of [
+      { name:'income-tax-cell-4', start:0, dice:[0,0.34], expectedPos:4, tax:200 },
+      { name:'luxury-tax-cell-38', start:36, dice:[0,0], expectedPos:38, tax:100 }
+    ]) {
+      const page = await browser.newPage({ viewport:{width:390,height:844} });
+      const pageErrors=[];
+      page.on('pageerror',error=>pageErrors.push(error.message));
+      await page.route('**/*',route=>{
+        if(route.request().url().startsWith('http://127.0.0.1:'))return route.continue();
+        return route.abort();
+      });
+      try {
+        await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'domcontentloaded'});
+        await page.addScriptTag({path:helperPath});
+        await page.evaluate(start=>window.__MONOPOLY_UI_TEST__.seed({money:500,owned:[],selected:start,phase:'ROLL'}),taxCase.start);
+        const initial=await page.evaluate(()=>window.__MONOPOLY_UI_TEST__.snapshot());
+        check(!initial.purchaseButton.visible,'tax path: purchase button should be hidden before roll');
+        await page.evaluate(dice=>{
+          const queue=[...dice];
+          Math.random=()=>queue.length?queue.shift():0.17;
+          window.playDiceAnim=()=>{};
+        },taxCase.dice);
+        await page.locator('#roll-btn').click();
+        const landed=await page.evaluate(()=>window.__MONOPOLY_UI_TEST__.snapshot());
+        check(landed.position===taxCase.expectedPos,'tax path: expected landing on '+taxCase.expectedPos+', got '+landed.position);
+        check(landed.money===500-taxCase.tax,'tax path: expected tax payment '+taxCase.tax+', balance is '+landed.money);
+        check(!landed.properties[String(taxCase.expectedPos)],'tax path: tax cell was incorrectly added to owned property');
+        check(!landed.purchaseButton.visible,'tax path: purchase button appeared on a tax cell');
+        check(!landed.centerAuctionVisible,'tax path: auction button appeared on a tax cell');
+        check(landed.estateAuctionDisabled,'tax path: estate auction control should be disabled');
+        await page.evaluate(()=>{
+          processBuy('p1');
+          processAuctionStart('p1');
+        });
+        const afterAttempt=await page.evaluate(()=>window.__MONOPOLY_UI_TEST__.snapshot());
+        check(afterAttempt.money===500-taxCase.tax,'tax path: a direct buy/auction request changed money');
+        check(!afterAttempt.properties[String(taxCase.expectedPos)],'tax path: a direct request acquired the tax cell');
+        check(!auctionState,'tax path: a direct request opened an auction for tax cell');
+        check(pageErrors.length===0,'tax path: browser errors: '+pageErrors.join(' | '));
+        passed.push(taxCase.name+' — платёж без покупки и аукциона');
+      } catch(error) {
+        failed.push({name:taxCase.name,error:String(error?.message||error)});
+        await page.screenshot({path:path.join(root,'tax-ui-failure-'+taxCase.name+'.png'),fullPage:true}).catch(()=>{});
+      } finally {
+        await page.close();
+      }
+    }
+
     console.log('=== MONOPOLY BUILDING USER-PATH AUTOTEST ===');
     for (const name of passed) console.log('PASS  ' + name);
     for (const item of failed) console.log('FAIL  ' + item.name + ': ' + item.error);
