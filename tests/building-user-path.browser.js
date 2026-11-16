@@ -45,11 +45,18 @@ window.__MONOPOLY_UI_TEST__ = {
   },
   snapshot() {
     const button = document.getElementById('estate-build-btn');
+    const purchase = document.getElementById('buy-btn');
+    const centerAuction = document.getElementById('auction-start-btn');
+    const estateAuction = document.getElementById('estate-auction-btn');
     const properties = {};
     Object.keys(ownedCells).forEach(id => properties[id] = { ...ownedCells[id] });
     const boardCells = [...document.querySelectorAll('#board > .cell')];
     return {
       money:players.find(p => p.id === myId)?.money,
+      position:players.find(p => p.id === myId)?.pos,
+      purchaseButton:{visible:!!purchase&&getComputedStyle(purchase).display!=='none',disabled:!!purchase?.disabled,text:purchase?.textContent?.trim()||''},
+      centerAuctionVisible:!!centerAuction&&getComputedStyle(centerAuction).display!=='none',
+      estateAuctionDisabled:!!estateAuction?.disabled,
       properties,
       bankHouses,
       bankHotels,
