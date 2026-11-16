@@ -1,4 +1,4 @@
-(() => {
+function runMonopolyMechanicsSuite() {
   const report = { passed: [], failed: [], knownGaps: [] };
   const p = (id, money = 1500, pos = 0, name = id, color = '#3b82f6') => ({
     id, name, money, pos, color, icon: '🚗', inJail: false, jailTurns: 0, jailCards: []
@@ -315,4 +315,3 @@
   return report;
 }
 window.runMonopolyMechanicsSuite = runMonopolyMechanicsSuite;
-})();
