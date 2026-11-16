@@ -1975,7 +1975,13 @@
             }
         }
 
-        function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
+        function buildHouse() {
+            const button=document.getElementById('estate-build-btn');
+            const targetId=button&&button.dataset.cellId!==''?Number(button.dataset.cellId):selectedCellId;
+            if(targetId===null||!Number.isInteger(targetId))return;
+            if(isHost)processBuild(myId,targetId);
+            else if(hostConn)hostConn.send({type:'BUILD',cellId:targetId});
+        }
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
         function broadcastState() {
@@ -2153,48 +2159,1635 @@
             // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
             const buildHint=document.getElementById('estate-build-hint');
-            const buildGroup=BOARD_CELLS.filter(c=>c.type==='street'&&c.color===inspCell.color);
-            const groupOwnedCount=buildGroup.filter(c=>ownedCells[c.id]?.ownerId===myId).length;
-            const groupMortgagedCount=buildGroup.filter(c=>ownedCells[c.id]?.ownerId===myId&&ownedCells[c.id]?.mortgaged).length;
-            const buildGroupComplete=buildGroup.length>0&&groupOwnedCount===buildGroup.length&&groupMortgagedCount===0;
-            const buildMin=buildGroup.length?Math.min(...buildGroup.map(c=>ownedCells[c.id]?.houses||0)):0;
-            const buildCount=selectedProp?.houses||0;
-            const buildStockAvailable=buildCount===4?bankHotels>0:bankHouses>0;
-            const canBuildSelected=!!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&inspCell.type==='street'&&selectedMine&&!selectedProp.mortgaged&&buildGroupComplete&&buildCount<5&&buildCount===buildMin&&activePlayer.money>=inspCell.housePrice&&buildStockAvailable);
-            let buildReason='';
-            if(!isMyTurn) buildReason='Строить можно только во время вашего хода.';
-            else if(turnPhase!=='ACTION'&&turnPhase!=='ROLL') buildReason='Сначала завершите текущее действие.';
-            else if(pendingDebt) buildReason='Сначала погасите задолженность.';
-            else if(pendingCardAckId) buildReason='Сначала возьмите вытянутую карту.';
-            else if(auctionState) buildReason='Дождитесь завершения аукциона.';
-            else if(inspCell.type!=='street'||!selectedMine) buildReason='Выберите свою улицу в списке имущества.';
-            else if(group.length===0||groupOwnedCount!==buildGroup.length) buildReason='Цветовая группа собрана не полностью: '+groupOwnedCount+' из '+buildGroup.length+' улиц.';
-            else if(groupMortgagedCount>0||selectedProp.mortgaged) buildReason='Сначала выкупите заложенные улицы этой цветовой группы.';
-            else if(buildCount>=5) buildReason='На этой улице уже построен отель.';
-            else if(buildCount!==buildMin) {
-                const lowest=buildGroup.filter(c=>(ownedCells[c.id]?.houses||0)===buildMin).map(c=>c.name).join(', ');
-                buildReason='Соблюдайте равномерную застройку. Следующий дом можно поставить: '+lowest+'.';
+            const buildPhaseAllowed=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&!gameOver;
+            const getBuildStatus=(cell)=>{
+                if(!cell||cell.type!=='street'||ownedCells[cell.id]?.ownerId!==myId)return {ok:false,reason:'Выберите свою улицу в списке имущества.'};
+                const asset=ownedCells[cell.id];
+                const group=BOARD_CELLS.filter(c=>c.type==='street'&&c.color===cell.color);
+                const ownedCount=group.filter(c=>ownedCells[c.id]?.ownerId===myId).length;
+                const mortgagedCount=group.filter(c=>ownedCells[c.id]?.ownerId===myId&&ownedCells[c.id]?.mortgaged).length;
+                if(!group.length||ownedCount!==group.length)return {ok:false,reason:'Цветовая группа собрана не полностью: '+ownedCount+' из '+group.length+' улиц.'};
+                if(mortgagedCount>0)return {ok:false,reason:'В цветовой группе есть заложенная улица. Сначала выкупите её.'};
+                if(asset.houses>=5)return {ok:false,reason:'На этой улице уже построен отель.'};
+                const minHouses=Math.min(...group.map(c=>ownedCells[c.id]?.houses||0));
+                if((asset.houses||0)!==minHouses){
+                    const next=group.filter(c=>(ownedCells[c.id]?.houses||0)===minHouses).map(c=>c.name).join(', ');
+                    return {ok:false,reason:'Соблюдайте равномерную застройку. Сначала стройте на: '+next+'.'};
+                }
+                const needsHotel=asset.houses===4;
+                if(needsHotel&&bankHotels===0)return {ok:false,reason:'В банке закончились отели.'};
+                if(!needsHotel&&bankHouses===0)return {ok:false,reason:'В банке закончились дома.'};
+                if(activePlayer.money<cell.housePrice)return {ok:false,reason:'Дом на «'+cell.name+'» стоит 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
             }
-            else if(!buildStockAvailable) buildReason=buildCount===4?'В банке закончились отели.':'В банке закончились дома.';
-            else if(activePlayer.money<inspCell.housePrice) {
-                const shortfall=inspCell.housePrice-activePlayer.money;
-                const alternative=BOARD_CELLS.find(c=>{
-                    if(c.type!=='street'||c.color===inspCell.color||ownedCells[c.id]?.ownerId!==myId||ownedCells[c.id]?.mortgaged)return false;
-                    const g=BOARD_CELLS.filter(x=>x.type==='street'&&x.color===c.color);
-                    const allOwned=g.length>0&&g.every(x=>ownedCells[x.id]?.ownerId===myId&&!ownedCells[x.id]?.mortgaged);
-                    const min=g.length?Math.min(...g.map(x=>ownedCells[x.id]?.houses||0)):0;
-                    const current=ownedCells[c.id]?.houses||0;
-                    return allOwned&&current===min&&current<5&&activePlayer.money>=c.housePrice&&(current===4?bankHotels>0:bankHouses>0);
-                });
-                buildReason='Дом на «'+inspCell.name+'» стоит $'+inspCell.housePrice+'. У вас $'+activePlayer.money+', не хватает $'+shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за $'+alternative.housePrice+'.':'');
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
             } else {
-                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за $'+inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
             }
             buildButton.disabled=!canBuildSelected;
             buildButton.style.display='inline-flex';
-            buildButton.textContent=buildCount===4?'🏨 Построить отель ($'+inspCell.housePrice+')':'🏠 Построить дом ($'+inspCell.housePrice+')';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
             buildButton.title=buildReason;
             if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++cell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++(cell.housePrice-activePlayer.money)+'.'};
+                return {ok:true,reason:(needsHotel?'Отель':'Дом')+' на «'+cell.name+'» стоит 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++cell.housePrice+'. Все правила строительства соблюдены.'};
+            };
+            const selectedBuildStatus=getBuildStatus(inspCell);
+            const alternativeBuildCell=buildPhaseAllowed?BOARD_CELLS.find(c=>c.type==='street'&&c.color!==inspCell.color&&ownedCells[c.id]?.ownerId===myId&&getBuildStatus(c).ok):null;
+            const buildTarget=buildPhaseAllowed?(selectedBuildStatus.ok?inspCell:alternativeBuildCell):null;
+            let buildReason='';
+            if(!isMyTurn)buildReason='Строить можно только во время вашего хода.';
+            else if(turnPhase!=='ACTION'&&turnPhase!=='ROLL')buildReason='Сначала завершите текущее действие.';
+            else if(pendingDebt)buildReason='Сначала погасите задолженность.';
+            else if(pendingCardAckId)buildReason='Сначала возьмите вытянутую карту.';
+            else if(auctionState)buildReason='Дождитесь завершения аукциона.';
+            else if(selectedBuildStatus.ok)buildReason=selectedBuildStatus.reason;
+            else if(buildTarget&&buildTarget.id!==inspCell.id)buildReason=selectedBuildStatus.reason+' Можно построить на «'+buildTarget.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++buildTarget.housePrice+'. Нажмите кнопку строительства — она построит дом на этой улице.';
+            else buildReason=selectedBuildStatus.reason;
+            const buildTargetAsset=buildTarget?ownedCells[buildTarget.id]:null;
+            buildButton.disabled=!buildTarget;
+            buildButton.style.display='inline-flex';
+            buildButton.dataset.cellId=buildTarget?String(buildTarget.id):'';
+            if(buildTarget){
+                const hotel=buildTargetAsset.houses===4;
+                buildButton.textContent=(hotel?'🏨 Построить отель: ':'🏠 Построить дом: ')+buildTarget.name+' (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. У вас 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++activePlayer.money+', не хватает 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++shortfall+'.'+(alternative?' Можно построить на «'+alternative.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++alternative.housePrice+'.':'');
+            } else {
+                buildReason=(buildCount===4?'Отель':'Дом')+' можно построить на «'+inspCell.name+'» за 
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+'. Цветовая группа: '+groupOwnedCount+'/'+buildGroup.length+'.';
+            }
+            buildButton.disabled=!canBuildSelected;
+            buildButton.style.display='inline-flex';
+            buildButton.textContent=buildCount===4?'🏨 Построить отель (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')':'🏠 Построить дом (
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++inspCell.housePrice+')';
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(canBuildSelected?'ready':(isMyTurn?'warning':''));}
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++buildTarget.housePrice+')';
+            } else {
+                buildButton.textContent='🏠 Построить дом';
+            }
+            buildButton.title=buildReason;
+            if(buildHint){buildHint.textContent=buildReason;buildHint.className='estate-build-hint '+(buildTarget?'ready':(isMyTurn?'warning':''));}
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
