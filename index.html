@@ -489,6 +489,168 @@
           .brand-logo{font-size:clamp(20px,2.3vw,30px)}
           .dice-area{transform:scale(.88);margin:-4px 0}
         }
+
+        /* --- STABLE DESKTOP LAYOUT FIX --- */
+        @media (min-width: 1101px) {
+            #game-screen {
+                grid-template-columns: minmax(310px, 360px) minmax(0, 1fr) minmax(210px, 250px);
+                grid-template-rows: 60px minmax(0, 1fr);
+                gap: 14px;
+                padding: 12px;
+                min-width: 0;
+                min-height: 0;
+            }
+            #game-screen > .estate-sidebar,
+            #game-screen > .sidebar-right,
+            #game-screen > .board-wrapper {
+                min-width: 0;
+                min-height: 0;
+                height: 100%;
+            }
+            #game-screen > .estate-sidebar {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                padding: 0 5px 10px 0;
+            }
+            #game-screen .estate-dashboard {
+                display: flex;
+                flex: 0 0 auto;
+                flex-direction: column;
+                width: 100%;
+                max-width: none;
+                max-height: none;
+                min-height: 0;
+                gap: 10px;
+                padding: 13px;
+                overflow: visible;
+            }
+            #game-screen .estate-wallet {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                align-items: center;
+                gap: 10px;
+                min-width: 0;
+                min-height: 105px;
+                padding: 11px;
+            }
+            #game-screen .estate-player,
+            #game-screen .estate-wallet > div {
+                min-width: 0;
+            }
+            #game-screen .estate-balance {
+                font-size: clamp(22px, 1.8vw, 30px);
+                white-space: nowrap;
+            }
+            #game-screen .estate-assets {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                min-height: 0;
+                overflow: visible;
+            }
+            #game-screen .estate-property-list {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                max-height: min(36vh, 340px);
+                min-height: 80px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                align-content: start;
+            }
+            #game-screen .estate-stats,
+            #game-screen .estate-actions {
+                min-width: 0;
+            }
+            #game-screen .estate-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 7px;
+            }
+            #game-screen .estate-actions .btn {
+                min-width: 0;
+                min-height: 40px;
+                padding: 8px 5px;
+                white-space: normal;
+                line-height: 1.15;
+                font-size: 11px;
+            }
+            #game-screen .estate-actions .btn.build {
+                grid-column: 1 / -1;
+            }
+            #game-screen .left-player-list {
+                display: flex;
+                flex: 0 0 auto;
+                flex-direction: column;
+                gap: 8px;
+            }
+            #game-screen > .board-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                padding: 0;
+            }
+            #game-screen > .board-wrapper > .board {
+                width: auto;
+                height: min(calc(100vh - 112px), calc(100vw - 650px), 900px);
+                max-width: 100%;
+                max-height: 100%;
+                flex: 0 1 auto;
+            }
+            #game-screen > .sidebar-right {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            #game-screen .chat-panel {
+                flex: 1 1 auto;
+                min-width: 0;
+                min-height: 0;
+            }
+        }
+        @media (min-width: 761px) and (max-width: 1100px) {
+            #game-screen {
+                grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+                grid-template-rows: 52px minmax(0, 1fr);
+                gap: 10px;
+                padding: 10px;
+            }
+            #game-screen > .sidebar-right { display: none; }
+            #game-screen .estate-dashboard {
+                display: flex;
+                flex-direction: column;
+                max-height: none;
+                overflow: visible;
+            }
+            #game-screen .estate-property-list { max-height: 260px; }
+            #game-screen > .board-wrapper > .board {
+                width: auto;
+                height: min(calc(100vh - 90px), calc(100vw - 350px));
+                max-width: 100%;
+            }
+        }
+        @media (max-width: 760px) {
+            #game-screen {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: 52px auto auto auto;
+                gap: 10px;
+                padding: 8px;
+            }
+            #game-screen > .board-wrapper { order: 1; height: auto; min-height: 0; }
+            #game-screen > .estate-sidebar { order: 2; height: auto; max-height: none; overflow: visible; }
+            #game-screen > .sidebar-right { order: 3; display: flex; height: auto; max-height: 320px; }
+            #game-screen .estate-dashboard { display: flex; flex-direction: column; max-height: none; overflow: visible; }
+            #game-screen .estate-property-list { max-height: 260px; }
+            #game-screen > .board-wrapper > .board {
+                width: min(100%, calc(100vw - 16px));
+                height: auto;
+                aspect-ratio: 1 / 1;
+            }
+        }
+
 </style>
 </head>
 <body>
