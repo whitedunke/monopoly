@@ -1201,6 +1201,18 @@
             const activePlayer = players[currentTurnIndex];
             document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
 
+            const myPosCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : BOARD_CELLS[0];
+            const isActivePlayersTurn = !!(activePlayer && activePlayer.id === myId);
+            const endTurnButton = document.getElementById('end-turn-btn');
+            if (endTurnButton) {
+                const canFinishTurn = isActivePlayersTurn && turnPhase === 'ACTION' && !gameOver && !auctionState;
+                endTurnButton.style.display = canFinishTurn ? 'inline-flex' : 'none';
+                endTurnButton.disabled = !canFinishTurn;
+                endTurnButton.textContent = (canFinishTurn && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail)
+                    ? 'Бросить ещё раз 🎲'
+                    : 'Завершить ход ⏭️';
+            }
+
             // Render the landing purchase offer before the rest of the dashboard.
             const purchaseCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : null;
             const purchaseIsMyTurn = !!(activePlayer && activePlayer.id === myId);
@@ -1299,9 +1311,6 @@
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
             if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
-            document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
-            if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
-            else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
             document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
