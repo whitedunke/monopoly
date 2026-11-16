@@ -486,7 +486,7 @@
                         </div>
                         <div id="debt-panel" style="display:none;grid-column:1/-1;padding:12px 14px;border:1px solid #d97706;background:#fff7ed;color:#7c2d12;border-radius:10px;font-size:13px;font-weight:700;align-items:center;justify-content:space-between;gap:12px;"><span id="debt-message">Необходимо погасить долг.</span><button class="btn" style="width:auto;background:#991b1b;padding:9px 12px;" onclick="declareBankruptcy()">Объявить банкротство</button></div>
                         <div class="estate-actions">
-                            <button class="btn sell" id="estate-sell-btn" onclick="sellSelectedAsset()" disabled>🏷 Продать</button>
+                            <button class="btn sell" id="estate-sell-btn" onclick="sellSelectedAsset()" disabled>🏷 Продать здания</button>
                             <button class="btn auction" id="estate-auction-btn" onclick="startAuction()">🔨 Аукцион</button>
                             <button class="btn mortgage" id="estate-mortgage-btn" onclick="mortgageSelected()">🏦 Заложить</button>
                             <button class="btn redeem" id="estate-redeem-btn" onclick="redeemSelected()">⌂ Выкупить</button>
@@ -1056,10 +1056,8 @@
                 prop.houses--; const refund=Math.floor(cell.housePrice/2); p.money+=refund;
                 broadcastLog('🏠 Продажа здания',p.name+' продал здание на «'+cell.name+'» за $'+refund+'.');
             } else {
-                if(prop.mortgaged)return;
-                if(cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&(ownedCells[c.id]?.houses||0)>0))return;
-                const refund=Math.floor(cell.price/2); p.money+=refund; delete ownedCells[cellId];
-                broadcastLog('🏷 Продажа недвижимости',p.name+' продал «'+cell.name+'» банку за $'+refund+'.');
+                // Недвижимость нельзя продать банку: её можно заложить или обменять.
+                return;
             }
             if(pendingDebt?.debtorId===p.id)settlePendingDebt();
             broadcastState();
@@ -1390,7 +1388,7 @@
             const selectedProp=ownedCells[inspCell.id];
             const selectedMine=!!(selectedProp&&selectedProp.ownerId===myId);
             const groupHasBuildings=BOARD_CELLS.some(c=>c.type==='street'&&c.color===inspCell.color&&(ownedCells[c.id]?.houses||0)>0);
-            const selectedCanSell=selectedMine&&!selectedProp.mortgaged&&((selectedProp.houses||0)>0||!groupHasBuildings);
+            const selectedCanSell=selectedMine&&!selectedProp.mortgaged&&(selectedProp.houses||0)>0;
             const selectedCanMortgage=selectedMine&&!selectedProp.mortgaged&&inspCell.price&&!groupHasBuildings;
             const selectedCanRedeem=selectedMine&&selectedProp.mortgaged&&activePlayer&&activePlayer.money>=Math.ceil(inspCell.price*.55);
             document.getElementById('estate-selected-stat').innerText=selectedProp?(selectedMine?'Выбрано: '+inspCell.name+(selectedProp.mortgaged?' · залог':''):'Владелец: '+(players.find(p=>p.id===selectedProp.ownerId)?.name||'игрок')):'Выберите объект для управления';
