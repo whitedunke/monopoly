@@ -1070,7 +1070,7 @@
         function processBuild(peerId, cellId) {
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[cellId];
-            if (!p || gameOver || pendingDebt || pendingCardAckId || auctionState || p.id !== peerId || turnPhase !== 'ACTION' || !cell || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
+            if (!p || gameOver || pendingDebt || pendingCardAckId || auctionState || p.id !== peerId || (turnPhase !== 'ACTION' && turnPhase !== 'ROLL') || !cell || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
             
             const group = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
             const groupOwned = group.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === p.id && !ownedCells[c.id].mortgaged);
@@ -1447,7 +1447,7 @@
             const buildMin=buildGroup.length?Math.min(...buildGroup.map(c=>ownedCells[c.id]?.houses||0)):0;
             const buildCount=selectedProp?.houses||0;
             const buildStockAvailable=buildCount===4?bankHotels>0:bankHouses>0;
-            const canBuildSelected=isMyTurn&&turnPhase==='ACTION'&&!pendingDebt&&!pendingCardAckId&&!auctionState&&inspCell.type==='street'&&selectedMine&&!selectedProp.mortgaged&&buildGroupComplete&&buildCount<5&&buildCount===buildMin&&activePlayer.money>=inspCell.housePrice&&buildStockAvailable;
+            const canBuildSelected=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&inspCell.type==='street'&&selectedMine&&!selectedProp.mortgaged&&buildGroupComplete&&buildCount<5&&buildCount===buildMin&&activePlayer.money>=inspCell.housePrice&&buildStockAvailable;
             let buildReason='Стройка доступна в вашу фазу действия после полного выкупа цветовой группы';
             if(!selectedMine||inspCell.type!=='street')buildReason='Выберите принадлежащую вам улицу';
             else if(!buildGroupComplete)buildReason='Сначала выкупите все улицы этой цветовой группы и снимите залог';
