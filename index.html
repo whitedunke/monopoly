@@ -484,7 +484,7 @@
                             <span class="estate-stat" id="estate-mortgage-stat">🏦 Ипотека: нет</span>
                             <span class="estate-stat" id="estate-selected-stat">Выберите объект для управления</span>
                         </div>
-                        <div id="debt-panel" style="display:none;grid-column:1/-1;padding:12px 14px;border:1px solid #d97706;background:#fff7ed;color:#7c2d12;border-radius:10px;font-size:13px;font-weight:700;align-items:center;justify-content:space-between;gap:12px;"><span id="debt-message">Необходимо погасить долг.</span><button class="btn" style="width:auto;background:#991b1b;padding:9px 12px;" onclick="declareBankruptcy()">Объявить банкротство</button></div>
+                        <div id="debt-panel" style="display:none;grid-column:1/-1;padding:12px 14px;border:1px solid #d97706;background:#fff7ed;color:#7c2d12;border-radius:10px;font-size:13px;font-weight:700;align-items:center;gap:12px;"><span id="debt-message">Необходимо погасить долг.</span></div>
                         <div class="estate-actions">
                             <button class="btn sell" id="estate-sell-btn" onclick="sellSelectedAsset()" disabled>🏷 Продать здания</button>
                             <button class="btn auction" id="estate-auction-btn" onclick="startAuction()">🔨 Аукцион</button>
@@ -808,7 +808,6 @@
             else if (data.type === 'MORTGAGE') processMortgage(conn.peer, data.cellId);
             else if (data.type === 'REDEEM') processRedeem(conn.peer, data.cellId);
             else if (data.type === 'SELL_ASSET') processSellAsset(conn.peer, data.cellId);
-            else if (data.type === 'DECLARE_BANKRUPTCY') processDeclareBankruptcy(conn.peer);
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
@@ -1090,8 +1089,6 @@
         function mortgageSelected(){if(isHost)processMortgage(myId,selectedCellId);else if(hostConn)hostConn.send({type:'MORTGAGE',cellId:selectedCellId});}
         function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
         function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
-        function declareBankruptcy(){if(isHost)processDeclareBankruptcy(myId);else if(hostConn)hostConn.send({type:'DECLARE_BANKRUPTCY'});}
-        function processDeclareBankruptcy(peerId){const p=players[currentTurnIndex];if(!pendingDebt||!p||p.id!==peerId||pendingDebt.debtorId!==peerId)return;handleBankruptcy(p,pendingDebt.creditorId);}
         function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
         function renderAuction(){const modal=document.getElementById('modal-auction'),details=document.getElementById('auction-details');if(!modal||!details)return;if(!auctionState||!auctionState.active){modal.style.display='none';return;}const cell=BOARD_CELLS[auctionState.cellId],leader=players.find(p=>p.id===auctionState.highBidder),me=players.find(p=>p.id===myId);details.innerHTML='<b>'+cell.name+'</b><br>Текущая ставка: <b>$'+auctionState.highBid+'</b><br>Лидер: '+(leader?leader.name:'нет')+'<br>Пас: '+auctionState.passed.length+'/'+players.length;modal.style.display='flex';const input=document.getElementById('auction-bid-input');if(input&&me){input.min=auctionState.highBid+1;input.max=me.money;if(Number(input.value)<=auctionState.highBid)input.value=auctionState.highBid+1;}const buttons=modal.querySelectorAll('button'),passed=me&&auctionState.passed.includes(me.id);if(buttons[0])buttons[0].disabled=!me||passed||me.money<=auctionState.highBid;if(buttons[1])buttons[1].disabled=!me||passed||me.id===auctionState.highBidder;}
         // --- ТОРГОВЛЯ ---
