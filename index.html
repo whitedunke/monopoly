@@ -798,12 +798,12 @@
             broadcastState();
         }
 
-        function resolveCardMovement(p,target,collectGo=true) {
+        function resolveCardMovement(p,target,collectGo=true,chargeRent=true) {
             const old=p.pos;
             if(target<old&&collectGo){p.money+=200;broadcastLog('💰 Зарплата',p.name+' проходит «ВПЕРЁД» и получает $200.');}
             p.pos=target;
             const cell=BOARD_CELLS[target],asset=ownedCells[target]; let creditorId=null;
-            if(asset&&asset.ownerId!==p.id&&!asset.mortgaged){
+            if(chargeRent&&asset&&asset.ownerId!==p.id&&!asset.mortgaged){
                 const owner=players.find(pl=>pl.id===asset.ownerId),rent=calculateRent(target,lastDice[0]+lastDice[1]);
                 if(owner&&rent){p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('💸 Рента',p.name+' платит $'+rent+' за «'+cell.name+'».');}
             }
@@ -829,12 +829,12 @@
                     p.money-=due;broadcastLog('🏠 Ремонт',p.name+' платит $'+due+'.');break;
                 }
                 case 'nearestRail':{
-                    const target=[5,15,25,35].find(x=>x>p.pos)??5;creditorId=resolveCardMovement(p,target,target<=p.pos);
+                    const target=[5,15,25,35].find(x=>x>p.pos)??5;creditorId=resolveCardMovement(p,target,target<=p.pos,false);
                     const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
                     if(owner&&owner.id!==p.id&&!asset.mortgaged){const rent=calculateRent(target,lastDice[0]+lastDice[1])*2;p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('🚂 Двойная рента','$'+rent+'.');}break;
                 }
                 case 'nearestUtility':{
-                    const target=[12,28].find(x=>x>p.pos)??12;creditorId=resolveCardMovement(p,target,target<=p.pos);
+                    const target=[12,28].find(x=>x>p.pos)??12;creditorId=resolveCardMovement(p,target,target<=p.pos,false);
                     const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
                     if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);p.money-=rent;owner.money+=rent;creditorId=owner.id;broadcastLog('💡 Коммунальная служба','$'+rent+'.');}break;
                 }
