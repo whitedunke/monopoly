@@ -854,7 +854,7 @@
             amount=Math.max(0,Math.floor(Number(amount)||0));if(!p||!amount)return false;const creditor=creditorId?players.find(x=>x.id===creditorId):null;
             if(p.money>=amount){p.money-=amount;if(creditor)creditor.money+=amount;broadcastLog('💸 Оплата',p.name+' оплачивает $'+amount+' · '+reason+'.');return false;}
             pendingDebt={debtorId:p.id,creditorId:creditor?creditor.id:null,amount,reason};turnPhase='ACTION';selectedCellId=p.pos;broadcastLog('⚠️ Долг',p.name+' должен $'+amount+' · '+reason+'. Продайте здания или заложите имущество.');
-            if(!hasLiquidationOptions(p))handleBankruptcy(p,creditor?creditor.id:null);return !!pendingDebt;
+            if(!hasLiquidationOptions(p)){handleBankruptcy(p,creditor?creditor.id:null);return true;}return true;
         }
         function settlePendingDebt(){if(!pendingDebt)return true;const debt=pendingDebt,p=players.find(x=>x.id===debt.debtorId);if(!p){pendingDebt=null;return false;}if(p.money>=debt.amount){p.money-=debt.amount;const creditor=debt.creditorId?players.find(x=>x.id===debt.creditorId):null;if(creditor)creditor.money+=debt.amount;pendingDebt=null;broadcastLog('✅ Долг погашен',p.name+' выплатил $'+debt.amount+'.');return true;}if(!hasLiquidationOptions(p))handleBankruptcy(p,debt.creditorId);return !pendingDebt;}
         function handleBankruptcy(p,creditorId=null) {
