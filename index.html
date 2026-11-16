@@ -920,10 +920,13 @@
                 else if (cell.type === 'chest') drawCard('chest', p);
                 else if (cell.type === 'tax') {
                     p.money -= cell.price;
-                    broadcastLog('💎 Налог', `${p.name} заплатил налог $${cell.price}.`);
+                    broadcastLog('💎 Налог', `${p.name} заплатил налог ${cell.price}.`);
                     if (p.money < 0) handleBankruptcy(p, null);
                     else broadcastState();
                 }
+                // Re-render after landing effects so the purchase offer reflects the final turn state.
+                selectedCellId = p.pos;
+                syncUI();
             });
         }
 
@@ -1273,10 +1276,13 @@
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
             const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const canBuy = isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && activePlayer.money >= myPosCell.price;
+            const cellIsPurchasable = !!(myPosCell && Number(myPosCell.price) > 0);
+            const cellIsUnowned = !!(cellIsPurchasable && !ownedCells[myPosCell.id]);
+            const canBuy = !!(activePlayer && isMyTurn && turnPhase === 'ACTION' && cellIsUnowned && Number(activePlayer.money) >= Number(myPosCell.price) && !activePlayer.inJail && !gameOver);
             const buyButton = document.getElementById('buy-btn');
             const purchaseHint = document.getElementById('purchase-hint');
             buyButton.style.display = (canBuy && !auctionState) ? 'block' : 'none';
+            buyButton.disabled = !(canBuy && !auctionState);
             if (canBuy && !auctionState) {
                 buyButton.innerText = `Купить «${myPosCell.name}» — ${myPosCell.price}`;
                 purchaseHint.innerText = 'Вы можете купить эту собственность или отказаться и провести аукцион.';
