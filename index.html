@@ -977,6 +977,134 @@
             .board-decks { transform:scale(.62); }
         }
 
+
+        /* FINAL RESPONSIVE LAYOUT — explicit grid areas prevent implicit-column overflow */
+        #game-screen, #game-screen * { box-sizing:border-box; }
+        #game-screen > .sidebar-left.estate-sidebar,
+        #game-screen > .board-wrapper,
+        #game-screen > .sidebar-right { min-width:0; min-height:0; }
+        #game-screen .estate-dashboard { width:100%; max-width:none; min-width:0; max-height:none; overflow:visible; }
+        #game-screen .estate-wallet {
+            display:grid;
+            grid-template-columns:minmax(0,1fr) auto;
+            grid-template-areas:"player balance";
+            align-items:center;
+            gap:12px;
+            width:100%;
+            min-width:0;
+            min-height:112px;
+        }
+        #game-screen .estate-player { grid-area:player; display:flex; align-items:center; min-width:0; gap:9px; }
+        #game-screen .estate-player > div:last-child { min-width:0; overflow-wrap:anywhere; }
+        #game-screen .estate-wallet > div:last-child { grid-area:balance; min-width:0; text-align:right; }
+        #game-screen .estate-balance { white-space:nowrap; line-height:1.05; }
+        #game-screen .estate-income { line-height:1.25; overflow-wrap:anywhere; }
+        #game-screen .estate-assets { display:flex; flex-direction:column; min-width:0; min-height:0; gap:8px; overflow:visible; }
+        #game-screen .estate-property-list { display:grid; min-width:0; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; }
+        #game-screen .estate-property-list > span {
+            grid-column:1/-1;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height:92px;
+            width:100%;
+            padding:16px;
+            border:1px dashed #d9d1c2;
+            border-radius:11px;
+            background:#faf8f2;
+            color:#77756d;
+            text-align:center;
+            line-height:1.4;
+        }
+        #game-screen .estate-stats { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+        #game-screen .estate-stat { min-width:0; white-space:normal; }
+        #game-screen .estate-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+        #game-screen .estate-actions .btn { width:100%; min-width:0; min-height:42px; padding:8px 7px; white-space:normal; overflow-wrap:anywhere; line-height:1.2; font-size:11px; }
+        #game-screen .estate-actions .btn.build { grid-column:1/-1; }
+        #game-screen > .sidebar-left.estate-sidebar { overflow-y:auto; overflow-x:hidden; }
+        #game-screen > .board-wrapper { display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        #game-screen > .board-wrapper > .board { max-width:100%; max-height:100%; }
+        #game-screen > .sidebar-right { display:flex; flex-direction:column; overflow:hidden; }
+        #game-screen .chat-panel { min-width:0; min-height:0; }
+
+        @media (min-width:1101px) {
+            #game-screen { grid-template-columns:minmax(300px,350px) minmax(0,1fr) minmax(220px,250px); grid-template-rows:56px minmax(0,1fr); gap:12px; padding:12px; overflow:hidden; }
+            #game-screen .estate-dashboard { padding:14px; }
+            #game-screen .estate-property-list { max-height:min(36vh,320px); overflow-y:auto; overflow-x:hidden; }
+            #game-screen .estate-wallet { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"player balance"; }
+            #game-screen .estate-balance { font-size:clamp(22px,1.8vw,29px); }
+            #game-screen .estate-income { max-width:132px; font-size:11px; }
+            #game-screen .estate-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            #game-screen > .board-wrapper > .board { width:auto; height:min(calc(100vh - 100px),calc(100vw - 620px),900px); }
+            #game-screen .left-player-list { display:flex; flex-direction:column; gap:8px; }
+        }
+        @media (min-width:761px) and (max-width:1100px) {
+            #game-screen { grid-template-columns:minmax(270px,310px) minmax(0,1fr); grid-template-rows:54px minmax(0,1fr); gap:10px; padding:10px; overflow:hidden; }
+            #game-screen > .sidebar-right { display:none; }
+            #game-screen .estate-wallet { grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "balance"; justify-items:start; }
+            #game-screen .estate-wallet > div:last-child { text-align:left; }
+            #game-screen .estate-property-list { max-height:250px; overflow-y:auto; }
+            #game-screen > .board-wrapper > .board { width:min(100%,calc(100vh - 90px)); height:auto; aspect-ratio:1; }
+        }
+        @media (max-width:760px) {
+            html, body { width:100%; min-width:0; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
+            body { display:block; align-items:initial; justify-content:initial; }
+            #game-screen { width:100%; height:auto; min-height:100svh; grid-template-columns:minmax(0,1fr); grid-template-rows:54px auto auto auto; gap:10px; padding:8px; overflow:visible; align-content:start; }
+            #game-screen > header { position:sticky; top:0; z-index:30; grid-column:1; min-height:48px; padding:0 12px; }
+            #game-screen > .board-wrapper { order:1; width:100%; height:auto; min-height:0; padding:0; overflow:visible; }
+            #game-screen > .board-wrapper > .board { width:min(100%,620px); height:auto; max-width:100%; max-height:none; aspect-ratio:1; border-width:5px; flex:none; }
+            #game-screen .board-center { min-width:0; min-height:0; padding:clamp(5px,2vw,10px); gap:4px; overflow:hidden; }
+            #game-screen .board-decks { transform:scale(.62); transform-origin:top center; }
+            #game-screen .brand-logo { font-size:clamp(16px,5vw,25px); letter-spacing:1px; margin:0; }
+            #game-screen #turn-banner { font-size:clamp(10px,3vw,13px)!important; }
+            #game-screen .center-main { min-width:0; gap:4px; }
+            #game-screen .dice-area { gap:8px; margin:3px 0; }
+            #game-screen .die-wrapper { width:clamp(30px,9vw,42px); height:clamp(30px,9vw,42px); }
+            #game-screen .action-buttons { gap:5px; flex-wrap:wrap; justify-content:center; }
+            #game-screen .action-buttons .btn { width:auto; min-height:34px; padding:7px 9px; font-size:clamp(9px,2.7vw,11px); }
+            #game-screen .purchase-action { width:100%; max-width:100%; margin:4px auto; gap:3px; }
+            #game-screen .purchase-action #buy-btn { min-height:36px; padding:7px 8px; font-size:clamp(10px,3vw,13px); }
+            #game-screen #purchase-hint { font-size:9px; line-height:1.2; }
+            #game-screen > .sidebar-left.estate-sidebar { order:2; display:flex; flex-direction:column; width:100%; height:auto; max-height:none; min-height:0; gap:10px; padding:0; overflow:visible; }
+            #game-screen .estate-dashboard { display:flex; flex-direction:column; width:100%; max-width:none; max-height:none; min-height:0; gap:10px; padding:12px; overflow:visible; }
+            #game-screen .estate-panel-heading { display:flex; flex-direction:column; align-items:stretch; gap:8px; padding-bottom:10px; }
+            #game-screen .estate-panel-heading strong { font-size:16px; }
+            #game-screen .estate-panel-heading small { font-size:11px; }
+            #game-screen .estate-open-manager { display:block; width:100%; min-height:40px; padding:9px 12px; font-size:12px; white-space:normal; }
+            #game-screen .estate-wallet { display:grid; grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "balance"; justify-items:start; gap:8px; width:100%; min-height:0; padding:10px; }
+            #game-screen .estate-player { width:100%; gap:8px; }
+            #game-screen .estate-player-token { width:42px; height:42px; font-size:21px; flex:0 0 42px; }
+            #game-screen #estate-player-name { font-size:14px; line-height:1.2; }
+            #game-screen .estate-player small { font-size:11px; }
+            #game-screen .estate-wallet > div:last-child { width:100%; text-align:left; }
+            #game-screen .estate-balance { font-size:27px; letter-spacing:-1px; }
+            #game-screen .estate-income { max-width:none; font-size:11px; line-height:1.25; }
+            #game-screen .estate-assets-title { font-size:14px; }
+            #game-screen .estate-manage-intro { font-size:11px; line-height:1.35; }
+            #game-screen .estate-property-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; max-height:260px; min-height:0; padding:0 2px 2px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; }
+            #game-screen .estate-property { min-width:0; min-height:82px; padding:7px 5px; }
+            #game-screen .estate-property-name { font-size:10px; overflow-wrap:anywhere; }
+            #game-screen .estate-stats { display:flex; flex-wrap:wrap; gap:5px; padding-top:8px; font-size:10px; }
+            #game-screen .estate-stat { padding:6px 8px; }
+            #game-screen .estate-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; width:100%; }
+            #game-screen .estate-actions .btn { width:100%; min-width:0; min-height:42px; padding:8px 5px; font-size:11px; line-height:1.2; }
+            #game-screen > .sidebar-left .left-player-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; overflow:visible; height:auto; }
+            #game-screen .left-player-list .player-card { min-width:0; padding:9px; }
+            #game-screen > .sidebar-right { order:3; display:flex; flex-direction:column; width:100%; height:auto; max-height:none; min-height:0; overflow:visible; }
+            #game-screen .chat-panel { min-height:260px; max-height:360px; }
+            #game-screen .chat-messages { min-height:160px; }
+            #game-screen .modal-overlay { padding:10px; }
+            #game-screen .modal-content { width:min(100%,520px); max-height:calc(100svh - 20px); overflow:auto; }
+        }
+        @media (max-width:390px) {
+            #game-screen { padding:6px; gap:8px; }
+            #game-screen .estate-panel-heading { align-items:stretch; }
+            #game-screen .estate-wallet { grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "balance"; }
+            #game-screen .estate-property-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            #game-screen .estate-actions .btn { font-size:10px; }
+            #game-screen .board-decks { transform:scale(.56); }
+        }
+
 </style>
 </head>
 <body>
