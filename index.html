@@ -806,7 +806,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardAckId=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -870,6 +870,7 @@
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
                 bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardAckId = data.pendingCardAckId ?? null;
+                if(!pendingCardAckId){const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'DRAWN_CARD') {
