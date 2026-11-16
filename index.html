@@ -1105,6 +1105,15 @@
             #game-screen .board-decks { transform:scale(.56); }
         }
 
+
+        @media (min-width:761px) {
+            #game-screen > .board-wrapper > .board {
+                width:min(100%,calc(100vh - 100px),calc(100vw - 620px),900px);
+                height:auto;
+                aspect-ratio:1 / 1;
+            }
+        }
+
 </style>
 </head>
 <body>
@@ -2078,7 +2087,7 @@
                         <div class="player-money">${p.money}</div>
                         <div class="player-props-container">${propsHTML}</div>
                     </div>`;
-                document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                if (p.id !== myId) document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
                 
                 // Отрисовка фишек на доске
                 document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
