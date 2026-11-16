@@ -411,6 +411,7 @@
                         <div class="action-buttons">
                             <button class="btn" id="roll-btn" onclick="rollDice()">Бросить кубики 🎲</button>
                             <button class="btn" id="pay-jail-btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); display: none;" onclick="payJail()">Заплатить $50 💸</button>
+                            <button class="btn" id="jail-card-btn" style="background:#7c3aed;display:none;" onclick="useJailCard()">Использовать карту освобождения</button>
                             <button class="btn" id="buy-btn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: none;" onclick="buyCurrentCell()">Купить</button>
             <button class="btn" id="auction-start-btn" style="background:#9a6b2f;display:none;" onclick="startAuction()">Аукцион</button>
             <button class="btn" id="mortgage-btn" style="background:#8b5cf6;display:none;" onclick="mortgageSelected()">Заложить</button>
@@ -748,10 +749,11 @@
             else if (data.type === 'END_TURN') { processEndTurn(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
+                if(data.fromId!==conn.peer||!players.some(p=>p.id===data.toId))return;
                 if (data.toId === myId) handleTradeRequest(data);
                 else { const targetConn = clientConns.find(c => c.peer === data.toId); if (targetConn) targetConn.send(data); }
             }
-            else if (data.type === 'TRADE_ACCEPT') { processTradeAccept(data.offer); }
+            else if (data.type === 'TRADE_ACCEPT') { processTradeAccept(data.offer,conn.peer); }
             else if (data.type === 'TRADE_REJECT') { broadcastLog('Отказ', `${players.find(p=>p.id===data.fromId)?.name} отклонил сделку.`); }
         }
 
@@ -763,7 +765,6 @@
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
                 bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels;
-                lastDice = data.dice || lastDice;
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
@@ -836,6 +837,7 @@
                     if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);p.money-=rent;owner.money+=rent;broadcastLog('💡 Коммунальная служба','$'+rent+'.');} break;
                 }
             }
+            if(card.type!=='jailFree')deck.push(card);
             if(p.money<0)handleBankruptcy(p,null);else broadcastState();
         }
 
@@ -1088,7 +1090,7 @@
             if(!pendingTrade) return;
             const me = players.find(p => p.id === myId);
             if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
-            if (isHost) processTradeAccept(pendingTrade);
+            if (isHost) processTradeAccept(pendingTrade,myId);
             else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
             closeModal('modal-trade-request');
         }
@@ -1099,21 +1101,27 @@
             closeModal('modal-trade-request');
         }
 
-        function processTradeAccept(offer) {
-            const p1 = players.find(p => p.id === offer.fromId);
-            const p2 = players.find(p => p.id === offer.toId);
-            if (!p1 || !p2) return;
-
-            p1.money = p1.money - offer.offerMoney + offer.requestMoney;
-            p2.money = p2.money - offer.requestMoney + offer.offerMoney;
-
-            offer.offerProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p2.id; ownedCells[id].color = p2.color; } });
-            offer.requestProps.forEach(id => { if(ownedCells[id]) { ownedCells[id].ownerId = p1.id; ownedCells[id].color = p1.color; } });
-
-            broadcastState();
-            broadcastLog('🤝 Сделка', `${p1.name} и ${p2.name} успешно совершили обмен!`);
+        function processTradeAccept(offer,acceptingPeerId) {
+            if(!offer||!acceptingPeerId||offer.toId!==acceptingPeerId||offer.fromId===offer.toId)return;
+            const p1=players.find(p=>p.id===offer.fromId),p2=players.find(p=>p.id===offer.toId);
+            const give=Number(offer.offerMoney),take=Number(offer.requestMoney);
+            const giveProps=Array.isArray(offer.offerProps)?offer.offerProps:[],takeProps=Array.isArray(offer.requestProps)?offer.requestProps:[];
+            if(!p1||!p2||!Number.isSafeInteger(give)||!Number.isSafeInteger(take)||give<0||take<0||p1.money<give||p2.money<take)return;
+            const unique=[...giveProps,...takeProps];
+            if(new Set(unique).size!==unique.length)return;
+            const validAsset=(id,ownerId)=>{
+                const cell=BOARD_CELLS[id],asset=ownedCells[id];
+                if(!cell||!asset||asset.ownerId!==ownerId)return false;
+                if(asset.houses>0)return false;
+                if(cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&(ownedCells[c.id]?.houses||0)>0))return false;
+                return true;
+            };
+            if(!giveProps.every(id=>validAsset(id,p1.id))||!takeProps.every(id=>validAsset(id,p2.id)))return;
+            p1.money=p1.money-give+take;p2.money=p2.money-take+give;
+            giveProps.forEach(id=>{ownedCells[id].ownerId=p2.id;ownedCells[id].color=p2.color;});
+            takeProps.forEach(id=>{ownedCells[id].ownerId=p1.id;ownedCells[id].color=p1.color;});
+            broadcastState();broadcastLog('🤝 Сделка',p1.name+' и '+p2.name+' успешно совершили обмен.');
         }
-
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
@@ -1126,7 +1134,7 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,dice:lastDice};
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
@@ -1250,6 +1258,8 @@
             document.getElementById('estate-auction-btn').disabled=!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&BOARD_CELLS[activePlayer.pos].price&&!ownedCells[activePlayer.pos]);
             document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
             document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
             if (isMyTurn && turnPhase === 'ACTION' && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail) document.getElementById('end-turn-btn').innerText = 'Бросить ещё раз 🎲';
             else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
