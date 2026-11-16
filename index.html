@@ -275,6 +275,55 @@
         @media(max-width:1050px) { #game-screen { grid-template-columns:180px minmax(360px,1fr); grid-template-rows:54px minmax(0,1fr) auto; } .sidebar-right { grid-column:1/-1; flex-direction:row; height:190px; } .sidebar-right #right-players { flex:1; flex-direction:row!important; flex-wrap:wrap; align-content:flex-start; } .sidebar-right .player-card { min-width:145px; flex:1; } .chat-panel { min-width:240px; } .board { height:min(calc(100vh - 290px),calc(100vw - 220px)); } }
         @media(max-width:680px) { body { height:auto; min-height:100vh; overflow:auto; align-items:flex-start; } #game-screen { height:auto; min-height:100vh; grid-template-columns:1fr; grid-template-rows:auto auto auto auto; padding:8px; } header { min-height:52px; padding:0 12px; } .sidebar-left,.sidebar-right { height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; } .player-card { min-width:145px; flex:1; } .board-wrapper { overflow:visible; } .board { width:min(96vw,620px); height:auto; aspect-ratio:1; } .chat-panel { min-height:190px; width:100%; } .trade-cols { flex-direction:column; } }
 
+    
+        /* --- TABLETOP BOARD & PLAYER TOKENS REDESIGN --- */
+        :root { --bg-dark:#e9e5dc; --panel-bg:#fffdf8; --panel-border:#d9d1c2; --board-bg:#e8e1d2; --board-center:#f5f0e5; --text-dark:#292820; }
+        body { background:radial-gradient(circle at 50% 40%,#f7f4ed 0%,#e7e1d5 100%); color:#292820; }
+        #game-screen { gap:12px; padding:12px; grid-template-columns:220px minmax(420px,1fr) 250px; }
+        header,.player-card,.chat-panel { background:#fffdf8; color:#292820; border:1px solid #ded7ca; box-shadow:0 5px 18px rgba(55,45,28,.07); backdrop-filter:none; }
+        .sidebar-left,.sidebar-right { gap:10px; }
+        .player-card { --player-color:#888; position:relative; overflow:hidden; padding:13px 12px 12px 16px; border:1px solid #ded7ca; border-left:5px solid var(--player-color); border-radius:13px; background:linear-gradient(110deg,color-mix(in srgb,var(--player-color) 9%,#fffdf8),#fffdf8 58%); color:#292820; gap:7px; box-shadow:0 3px 10px rgba(48,40,25,.05); }
+        .player-card.active { border:1px solid var(--player-color); border-left:5px solid var(--player-color); background:linear-gradient(110deg,color-mix(in srgb,var(--player-color) 16%,#fffdf8),#fffdf8 72%); box-shadow:0 0 0 3px color-mix(in srgb,var(--player-color) 16%,transparent),0 7px 18px rgba(48,40,25,.09); animation:none; }
+        .player-card.jailed { border-color:#c66b5d; border-left-color:#c66b5d; background:#fff7f4; }
+        .player-identity { display:flex; align-items:center; gap:10px; min-width:0; color:#292820; font-size:14px; }
+        .player-token-icon { display:flex; align-items:center; justify-content:center; flex:0 0 38px; width:38px; height:38px; border-radius:50%; background:var(--player-color); color:white; font-size:21px; filter:none; border:3px solid #fff; box-shadow:0 0 0 1px color-mix(in srgb,var(--player-color) 70%,#222),0 3px 7px rgba(0,0,0,.16); }
+        .player-name-wrap { display:flex; flex-direction:column; min-width:0; gap:3px; }
+        .player-name { color:#292820; font-weight:800; overflow-wrap:anywhere; }
+        .player-seat { color:#8a8376; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+        .player-turn-label { margin-left:auto; padding:4px 7px; border-radius:5px; background:var(--player-color); color:#fff; font-size:9px; font-weight:900; letter-spacing:.06em; }
+        .player-money { color:#285d3d; text-shadow:none; font-size:20px; font-weight:900; }
+        .player-props-container { gap:4px; margin-top:2px; }
+        .prop-pip { width:19px; height:7px; border:1px solid rgba(0,0,0,.12); border-radius:3px; box-shadow:none; }
+        .jail-badge { top:8px; right:9px; color:#b45345; filter:none; font-size:16px; }
+        .board-wrapper { overflow:visible; perspective:none; }
+        .board { height:min(calc(100vh - 105px),calc(100vw - 510px)); aspect-ratio:1; background:#e9e2d4; border:9px solid #315640; border-radius:7px; box-shadow:0 16px 38px rgba(48,40,25,.17),inset 0 0 0 2px rgba(255,255,255,.55); gap:0; }
+        .cell { background:#fffdf8; border:1px solid #d9d2c6; color:#292820; overflow:hidden; padding:3px; transition:background .15s,border-color .15s,box-shadow .15s; }
+        .cell:hover { z-index:10; transform:none; background:#fff; border-color:#7a927d; box-shadow:inset 0 0 0 2px #7a927d; }
+        .cell.owned { filter:none; background:#f4f0e7; }
+        .cell-color-bar { height:24%; min-height:8px; border-bottom:2px solid rgba(0,0,0,.12); flex-shrink:0; }
+        .cell-content { padding:3px 2px; gap:3px; }
+        .cell-name { color:#292820; font-size:clamp(7px,.66vw,10px); line-height:1.15; font-weight:800; overflow-wrap:anywhere; }
+        .cell-icon { font-size:clamp(13px,1.15vw,19px); filter:none; margin:2px 0; }
+        .cell-price { color:#716a5e; font-size:clamp(7px,.62vw,10px); font-weight:800; margin-top:3px; }
+        .cell.corner { background:#eee8dc; padding:5px; }
+        .cell.corner .cell-name { font-size:clamp(8px,.78vw,12px); }
+        .cell.corner .cell-icon { font-size:clamp(18px,1.7vw,27px); margin:4px 0; }
+        .owner-marker { top:3px; right:3px; width:9px; height:9px; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+        .buildings-layer { top:26%; left:2px; right:2px; gap:2px; z-index:5; }
+        .house { width:9px; height:9px; background:#397b4e; border:1px solid #245d37; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+        .hotel { width:13px; height:11px; background:#b94d40; border:1px solid #87352d; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+        .tokens-layer { inset:2px; align-items:flex-end; justify-content:flex-start; gap:2px; padding:2px; z-index:8; }
+        .board-token { --token-color:#888; display:inline-flex; align-items:center; justify-content:center; position:relative; width:clamp(17px,1.7vw,25px); height:clamp(17px,1.7vw,25px); flex:0 0 auto; border-radius:50%; background:var(--token-color); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.38),0 0 0 1px color-mix(in srgb,var(--token-color) 70%,#222); font-size:clamp(10px,1vw,15px); line-height:1; filter:none; transition:transform .2s; }
+        .board-token::after { content:attr(data-player); position:absolute; left:50%; bottom:calc(100% + 3px); transform:translateX(-50%); display:none; white-space:nowrap; padding:2px 5px; border-radius:4px; background:#292820; color:#fff; font:700 9px Inter,sans-serif; }
+        .board-token:hover::after { display:block; }
+        .board-center { background:#f7f3e9; background-image:radial-gradient(circle at center,#fffdf8 0%,#f0eadc 100%); border:1px solid #d7cfbf; padding:clamp(10px,2vw,24px); }
+        .brand-logo { color:#315640; text-shadow:none; letter-spacing:4px; transform:rotate(-7deg); }
+        #turn-banner { color:#315640!important; font-size:clamp(12px,1vw,15px)!important; text-align:center; }
+        .property-preview { background:#fffdf8; border:1px solid #ded7ca; box-shadow:0 5px 15px rgba(40,32,18,.07); border-radius:10px; }
+        .chat-messages { background:#f6f3ec; color:#343228; border:1px solid #e6dfd2; }
+        @media(max-width:1100px) { #game-screen { grid-template-columns:185px minmax(340px,1fr); } .board { height:min(calc(100vh - 290px),calc(100vw - 230px)); } }
+        @media(max-width:680px) { #game-screen { grid-template-columns:1fr; } .board { width:min(96vw,620px); height:auto; } .player-card { min-width:145px; } .board-token { width:20px;height:20px; } }
+
     </style>
 </head>
 <body>
@@ -937,19 +986,20 @@
                 const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
 
                 const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}">
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
                         ${jailHTML}
                         <div class="player-identity">
                             <span class="player-token-icon">${p.icon}</span>
-                            <span style="color: ${p.color}">${p.name}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
                         </div>
-                        <div class="player-money">$${p.money}</div>
+                        <div class="player-money">${p.money}</div>
                         <div class="player-props-container">${propsHTML}</div>
                     </div>`;
                 document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
                 
                 // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" title="${p.name}">${p.icon}</div>`;
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${p.icon}</div>`;
             });
 
             const inspCell = BOARD_CELLS[selectedCellId || 0];
