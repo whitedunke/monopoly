@@ -396,7 +396,48 @@
         .board-token::after { bottom:calc(100% + 1px)!important; }
         .player-card.active .player-token-icon { transform:translateY(-2px); }
         @media(max-width:680px) { .player-token-icon { width:48px!important;height:48px!important;flex-basis:48px!important; } .pawn-card { width:48px;height:48px; } .board-token { width:25px!important;height:25px!important; } }
-    </style>
+    
+        /* Responsive board centre: keep the estate controls inside the playable area. */
+        .board-wrapper{min-width:0;min-height:0;overflow:hidden;padding:8px}
+        .board{height:min(calc(100vh - 150px),calc(100vw - 120px),900px);width:auto;max-width:100%;flex:0 1 auto}
+        .board-center{min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;padding:clamp(8px,1.35vw,16px);overflow:hidden}
+        .center-main{min-height:0;gap:clamp(6px,1vh,10px)}
+        .brand-logo{font-size:clamp(22px,2.7vw,38px);margin-bottom:2px;letter-spacing:clamp(2px,.35vw,4px)}
+        .dice-area{gap:12px}
+        .purchase-action{width:min(100%,380px);gap:5px}
+        .estate-dashboard{width:100%;max-height:250px;min-height:0;padding:10px;gap:8px;grid-template-columns:minmax(125px,.72fr) minmax(0,1.8fr);overflow:hidden;border-radius:14px}
+        .estate-wallet{min-height:112px;padding:10px}
+        .estate-player-token{width:42px;height:42px}
+        .estate-balance{font-size:clamp(22px,2vw,32px)}
+        .estate-income{font-size:12px}
+        .estate-assets{min-height:0;overflow:hidden}
+        .estate-property-list{grid-template-columns:repeat(auto-fit,minmax(78px,1fr));max-height:116px;overflow-y:auto;overscroll-behavior:contain}
+        .estate-property{min-height:82px;padding:5px;gap:3px}
+        .estate-property-name{font-size:10px;min-height:22px}
+        .estate-property-state{font-size:9px}
+        .estate-stats{padding-top:6px;gap:5px;font-size:10px}
+        .estate-stat{padding:5px 7px}
+        .estate-actions{gap:5px}
+        .estate-actions .btn{font-size:clamp(9px,.78vw,11px);padding:8px 3px;min-width:0;white-space:normal;line-height:1.15}
+        .drawn-card-overlay{z-index:9999}
+        @media(max-width:900px){
+          .board{height:min(calc(100vh - 130px),calc(100vw - 90px),760px)}
+          .board-center{padding:7px;gap:5px}
+          .estate-dashboard{max-height:230px;grid-template-columns:minmax(105px,.65fr) minmax(0,1.7fr);padding:7px;gap:6px}
+          .estate-wallet{min-height:96px;padding:7px}
+          .estate-property-list{grid-template-columns:repeat(3,minmax(0,1fr));max-height:94px}
+          .estate-stats{font-size:9px}
+          .estate-actions .btn{font-size:9px;padding:7px 2px}
+          .center-main{gap:5px}
+        }
+        @media(max-height:720px){
+          .board{height:min(calc(100vh - 90px),calc(100vw - 90px),680px)}
+          .estate-dashboard{max-height:205px}
+          .estate-property-list{max-height:75px}
+          .brand-logo{font-size:clamp(20px,2.3vw,30px)}
+          .dice-area{transform:scale(.88);margin:-4px 0}
+        }
+</style>
 </head>
 <body>
 
@@ -510,7 +551,7 @@
         </div>
     </div>
 
-    <div class="drawn-card-overlay" id="drawn-card-overlay" role="dialog" aria-modal="true" aria-labelledby="drawn-card-heading" onclick="if(event.target===this) closeDrawnCard()">
+    <div class="drawn-card-overlay" id="drawn-card-overlay" role="dialog" aria-modal="true" aria-labelledby="drawn-card-heading">
         <div class="drawn-card" id="drawn-card">
             <div class="drawn-card-top" id="drawn-card-top">СОБЫТИЕ</div>
             <div class="drawn-card-symbol" id="drawn-card-symbol">❓</div>
@@ -518,7 +559,7 @@
             <div class="drawn-card-divider"></div>
             <div class="drawn-card-text" id="drawn-card-text"></div>
             <div class="drawn-card-player" id="drawn-card-player"></div>
-            <button class="btn" onclick="closeDrawnCard()">Понятно</button>
+            <button class="btn" onclick="closeDrawnCard()">Взять карту</button>
         </div>
     </div>
 
