@@ -239,6 +239,121 @@
         .prop-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #e2e8f0; cursor: pointer; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; transition: 0.2s; }
         .prop-list label:hover { background: rgba(255,255,255,0.1); }
         .prop-list input { cursor: pointer; accent-color: #8b5cf6; width: 16px; height: 16px; }
+    
+        /* --- CLASSIC MINIMAL TABLETOP THEME --- */
+        :root {
+            --bg-dark: #f2efe8;
+            --panel-bg: #fffdf8;
+            --panel-border: #e4ddcf;
+            --board-bg: #e8e3d8;
+            --board-center: #f8f5ed;
+            --text-dark: #27251f;
+            --accent-gold: #b58a42;
+            --accent-green: #47745b;
+        }
+        * { font-family: Inter, Arial, sans-serif; }
+        body {
+            background: #eeeae1;
+            color: #292820;
+        }
+        #lobby {
+            background: #fffdf8; color: #292820; border: 1px solid #e3dccf;
+            box-shadow: 0 18px 50px rgba(55,45,28,.10); border-radius: 18px;
+        }
+        #lobby h1 { color: #2d503d; text-shadow: none; letter-spacing: 1.5px; }
+        .input-group label { color: #777267; }
+        .input-group input, .chat-input-row input {
+            background: #f8f6f0; color: #292820; border: 1px solid #ddd6c9;
+        }
+        .input-group input:focus { border-color: #66836c; box-shadow: 0 0 0 3px rgba(71,116,91,.12); }
+        .btn {
+            background: #426b50; color: #fff; border-radius: 9px;
+            box-shadow: none; transition: background .18s ease, transform .18s ease;
+        }
+        .btn:hover:not(:disabled) { background: #35583f; transform: translateY(-1px); box-shadow: none; }
+        .btn:active:not(:disabled) { transform: translateY(0); }
+        .btn-secondary { background: #e9e5dc; color: #353329; box-shadow: none; }
+        .btn-secondary:hover:not(:disabled) { background: #ddd7ca; box-shadow: none; }
+        #game-screen { gap: 12px; padding: 12px; grid-template-columns: 230px minmax(420px,1fr) 260px; grid-template-rows: 54px minmax(0,1fr); }
+        header, .player-card, .chat-panel {
+            background: #fffdf8; border: 1px solid #e4ddcf; color: #292820;
+            box-shadow: 0 4px 18px rgba(55,45,28,.05); backdrop-filter: none;
+        }
+        header { border-radius: 12px; }
+        .header-title { color: #315640; letter-spacing: .5px; }
+        .badge-btn { background: #f4f1e9; color: #4b493f; border: 1px solid #e3dccf; }
+        .badge-btn:hover { background: #ebe6db; }
+        .sidebar-left, .sidebar-right { gap: 9px; }
+        .player-card { border: 1px solid #e4ddcf; border-radius: 12px; padding: 12px; gap: 8px; }
+        .player-card.active { border: 2px solid #64866a; box-shadow: 0 0 0 3px rgba(71,116,91,.10); animation: none; }
+        .player-card.jailed { border-color: #c77768; background: #fff8f5; }
+        .player-identity { color: #292820; font-size: 14px; }
+        .player-money { color: #315f43; text-shadow: none; font-size: 20px; }
+        .board-wrapper { min-width: 0; }
+        .board {
+            height: min(calc(100vh - 88px), calc(100vw - 540px));
+            border: 7px solid #315640; border-radius: 5px;
+            background: #e5e0d5; box-shadow: 0 14px 34px rgba(55,45,28,.16);
+        }
+        .cell { background: #fffdf8; border-color: #d9d3c8; }
+        .cell:hover { transform: scale(1.035); box-shadow: 0 5px 12px rgba(30,25,15,.16); border-color: #7c8d78; }
+        .cell.owned { filter: none; background: #f4f1e8; }
+        .cell-color-bar { border-bottom: 1px solid rgba(0,0,0,.12); }
+        .cell-name { color: #292820; font-weight: 700; }
+        .cell-price { color: #686357; }
+        .cell.corner { background: #eee9dd; }
+        .board-center {
+            background: #f7f4eb; border: 1px solid #d8d1c3; padding: clamp(10px,2vw,24px);
+            background-image: radial-gradient(circle at center, #fffdf8 0%, #f2eee4 100%);
+        }
+        .brand-logo {
+            color: #315640; text-shadow: none; letter-spacing: 4px;
+            transform: rotate(-7deg); font-size: clamp(20px,2.7vw,38px);
+        }
+        #turn-banner { color: #536e59 !important; }
+        .property-preview { background: #fffdf8; border: 1px solid #ded7ca; box-shadow: 0 5px 15px rgba(40,32,18,.07); border-radius: 10px; }
+        .property-preview-meta { color: #696456; }
+        .chat-panel { border-radius: 12px; padding: 12px; }
+        .chat-messages { background: #f6f3ec; color: #343228; border: 1px solid #e6dfd2; }
+        .chat-messages b { color: #53715b !important; }
+        .chat-messages span { color: #403e35 !important; }
+        .chat-input-row button { background: #426b50; }
+        .chat-input-row button:hover { background: #35583f; }
+        .modal-overlay { background: rgba(35,32,25,.48); }
+        .modal-content { background: #fffdf8; color: #292820; border: 1px solid #e2dacd; box-shadow: 0 18px 50px rgba(30,25,15,.18); }
+        .modal-title { color: #315640; }
+        .trade-col { background: #f7f4ed; border: 1px solid #e7e0d4; }
+        .trade-col h4 { color: #53715b; }
+        .prop-list label { color: #403e35; background: #eeeadf; }
+        .prop-list label:hover { background: #e5dfd2; }
+        @media (max-width: 1050px) {
+            #game-screen { grid-template-columns: 180px minmax(360px,1fr); grid-template-rows: 54px minmax(0,1fr) auto; }
+            .sidebar-right { grid-column: 1 / -1; flex-direction: row; height: 190px; }
+            .sidebar-right #right-players { flex: 1; flex-direction: row !important; flex-wrap: wrap; align-content: flex-start; }
+            .sidebar-right .player-card { min-width: 145px; flex: 1; }
+            .chat-panel { min-width: 240px; }
+            .board { height: min(calc(100vh - 290px), calc(100vw - 220px)); }
+        }
+        @media (max-width: 680px) {
+            body { height: auto; min-height: 100vh; overflow: auto; align-items: flex-start; }
+            #game-screen { height: auto; min-height: 100vh; display: none; grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; padding: 8px; }
+            header { min-height: 52px; padding: 0 12px; }
+            .sidebar-left, .sidebar-right { height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; }
+            .player-card { min-width: 145px; flex: 1; }
+            .board-wrapper { overflow: visible; }
+            .board { width: min(96vw, 620px); height: auto; aspect-ratio: 1; }
+            .board-center { padding: 8px; }
+            .property-preview { width: min(100%,260px); padding: 8px; }
+            .dice-area { gap: 14px; margin: 8px 0; }
+            .die-wrapper { width: 44px; height: 44px; }
+            .die { border-radius: 9px; padding: 7px; }
+            .pip { width: 8px; height: 8px; }
+            .action-buttons .btn { padding: 9px 11px; font-size: 12px; }
+            .sidebar-right { grid-column: auto; }
+            .chat-panel { min-height: 190px; width: 100%; }
+            .trade-cols { flex-direction: column; }
+        }
+
     </style>
 </head>
 <body>
@@ -441,6 +556,7 @@
         let isHost = false, myId = '', activeRoomId = '';
         let players = [], ownedCells = {}, currentTurnIndex = 0, turnPhase = 'ROLL', selectedCellId = null;
         let pendingTrade = null;
+        let lastRollWasDouble = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -520,7 +636,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0 }];
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, doublesCount: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0 }];
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -551,7 +667,7 @@
         function handleHostData(data, conn) {
             if (data.type === 'JOIN' && players.length < 6) {
                 const idx = players.length;
-                players.push({ id: conn.peer, name: data.name, money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0 });
+                players.push({ id: conn.peer, name: data.name, money: 1500, pos: 0, doublesCount: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0 });
                 broadcastState(); broadcastLog('Система', `${data.name} в игре.`);
             } else if (data.type === 'ROLL') { processRoll(conn.peer); }
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
@@ -570,7 +686,7 @@
         function handleClientData(data) {
             if (data.type === 'STATE') {
                 players = data.players; ownedCells = data.ownedCells;
-                currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase;
+                currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase; lastRollWasDouble = !!data.lastRollWasDouble;
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
@@ -589,7 +705,7 @@
         function handleBankruptcy(p, creditorId = null) {
             broadcastLog('☠️ Банкротство', `${p.name} обанкротился и выбывает из игры!`);
             const index = players.indexOf(p);
-            if (index > -1) players.splice(index, 1);
+            if (index > -1) { players.splice(index, 1); if (index < currentTurnIndex) currentTurnIndex--; }
             
             Object.keys(ownedCells).forEach(cellId => {
                 if (ownedCells[cellId].ownerId === p.id) {
@@ -602,6 +718,7 @@
                     }
                 }
             });
+            if (players.length <= 1) { turnPhase = 'FINISHED'; broadcastLog('🏆 Победа', `${players[0]?.name || 'Игрок'} победил!`); }
             if (currentTurnIndex >= players.length) currentTurnIndex = 0;
             turnPhase = 'ROLL';
             broadcastState();
@@ -667,6 +784,8 @@
             }
 
             if (p.money < 0) { handleBankruptcy(p, ownedCells[cell.id]?.ownerId); return; }
+            lastRollWasDouble = d1 === d2 && !p.inJail;
+            if (lastRollWasDouble) broadcastLog('🎲 Дубль', `${p.name} выбросил дубль и получает дополнительный бросок после завершения действий.`);
 
             clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, dice: [d1, d2] }));
             
@@ -711,7 +830,10 @@
             const cell = BOARD_CELLS[cellId];
             if (p.id !== peerId || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
             
-            if (p.money >= cell.housePrice && ownedCells[cellId].houses < 5) {
+            const colorGroup = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
+            const groupCounts = colorGroup.map(c => ownedCells[c.id]?.houses || 0);
+            const canBuildEvenly = groupCounts.length > 0 && (ownedCells[cellId].houses || 0) === Math.min(...groupCounts) && Math.max(...groupCounts) - Math.min(...groupCounts) <= 1;
+            if (p.money >= cell.housePrice && ownedCells[cellId].houses < 5 && canBuildEvenly) {
                 p.money -= cell.housePrice;
                 ownedCells[cellId].houses++;
                 broadcastState();
@@ -720,9 +842,15 @@
         }
 
         function processEndTurn(peerId) {
-            if (players[currentTurnIndex].id === peerId && turnPhase === 'ACTION') {
-                currentTurnIndex = (currentTurnIndex + 1) % players.length;
-                turnPhase = 'ROLL';
+            if (players[currentTurnIndex]?.id === peerId && turnPhase === 'ACTION') {
+                if (lastRollWasDouble) {
+                    lastRollWasDouble = false;
+                    turnPhase = 'ROLL';
+                    broadcastLog('🎲 Дополнительный ход', `${players[currentTurnIndex].name} бросает кубики ещё раз.`);
+                } else {
+                    currentTurnIndex = (currentTurnIndex + 1) % players.length;
+                    turnPhase = 'ROLL';
+                }
                 broadcastState();
             }
         }
@@ -838,7 +966,7 @@
         function buildHouse() { if (isHost) processBuild(myId, selectedCellId); else if (hostConn) hostConn.send({ type: 'BUILD', cellId: selectedCellId }); }
         function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
 
-        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase })); }
+        function broadcastState() { syncUI(); clientConns.forEach(c => c.send({ type: 'STATE', players, ownedCells, currentTurnIndex, turnPhase, lastRollWasDouble })); }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
         function appendLog(n, t) { 
             const b = document.getElementById('chat-messages'); 
@@ -934,7 +1062,8 @@
             document.getElementById('insp-meta').innerText = metaText;
 
             const isMyTurn = activePlayer && activePlayer.id === myId;
-            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL') ? 'inline-block' : 'none';
+            document.getElementById('roll-btn').innerText = activePlayer?.inJail ? 'Бросить на выход из тюрьмы' : 'Бросить кубики 🎲';
             document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
             document.getElementById('end-turn-btn').style.display = (isMyTurn && turnPhase === 'ACTION') ? 'inline-block' : 'none';
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
@@ -947,7 +1076,9 @@
             if (isMyTurn && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && inspOwner.houses < 5) {
                 const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
                 const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                if (hasMonopoly && activePlayer.money >= inspCell.housePrice) canBuild = true;
+                const groupCounts = sameColor.map(c => ownedCells[c.id]?.houses || 0);
+                const evenBuild = groupCounts.length > 0 && inspOwner.houses === Math.min(...groupCounts) && Math.max(...groupCounts) - Math.min(...groupCounts) <= 1;
+                if (hasMonopoly && evenBuild && activePlayer.money >= inspCell.housePrice) canBuild = true;
             }
             document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
             if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
