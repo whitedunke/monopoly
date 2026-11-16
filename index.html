@@ -926,7 +926,7 @@
                 }
                 // Re-render after landing effects so the purchase offer reflects the final turn state.
                 selectedCellId = p.pos;
-                syncUI();
+                broadcastState();
             });
         }
 
@@ -1201,6 +1201,35 @@
             const activePlayer = players[currentTurnIndex];
             document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
 
+            // Render the landing purchase offer before the rest of the dashboard.
+            const purchaseCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : null;
+            const purchaseIsMyTurn = !!(activePlayer && activePlayer.id === myId);
+            const purchaseIsFree = !!(purchaseCell && purchaseCell.price > 0 && !ownedCells[purchaseCell.id]);
+            const purchaseIsAction = turnPhase === 'ACTION' && !activePlayer?.inJail && !gameOver;
+            const showPurchaseOffer = purchaseIsMyTurn && purchaseIsAction && purchaseIsFree;
+            const purchaseButton = document.getElementById('buy-btn');
+            const purchaseMessage = document.getElementById('purchase-hint');
+            if (purchaseButton && purchaseMessage) {
+                purchaseButton.style.display = showPurchaseOffer ? 'block' : 'none';
+                purchaseButton.disabled = !showPurchaseOffer || !!auctionState || activePlayer.money < purchaseCell.price;
+                if (showPurchaseOffer) {
+                    purchaseButton.textContent = `Купить «${purchaseCell.name}» — ${purchaseCell.price}`;
+                    purchaseMessage.textContent = auctionState
+                        ? 'Идёт аукцион: обычная покупка временно недоступна.'
+                        : activePlayer.money < purchaseCell.price
+                            ? 'Недостаточно денег для покупки. Можно выставить объект на аукцион.'
+                            : 'Вы остановились на свободной собственности. Купите её или начните аукцион.';
+                } else if (purchaseIsMyTurn && purchaseIsAction && purchaseCell?.price && ownedCells[purchaseCell.id]) {
+                    purchaseMessage.textContent = 'Эта собственность уже принадлежит игроку.';
+                } else if (turnPhase === 'ROLL' && purchaseIsMyTurn) {
+                    purchaseMessage.textContent = activePlayer?.inJail ? 'Вы в тюрьме: выберите способ выхода.' : 'Бросьте кубики, чтобы сделать ход.';
+                } else if (!purchaseIsMyTurn && activePlayer) {
+                    purchaseMessage.textContent = 'Ожидайте своего хода.';
+                } else {
+                    purchaseMessage.textContent = 'После броска предложение о покупке появится здесь, если клетка свободна.';
+                }
+            }
+
             ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
             players.forEach((p, i) => {
                 const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
@@ -1275,22 +1304,6 @@
             else document.getElementById('end-turn-btn').innerText = 'Завершить ход ⏭️';
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
-            const myPosCell = BOARD_CELLS[activePlayer ? activePlayer.pos : 0];
-            const cellIsPurchasable = !!(myPosCell && Number(myPosCell.price) > 0);
-            const cellIsUnowned = !!(cellIsPurchasable && !ownedCells[myPosCell.id]);
-            const canBuy = !!(activePlayer && isMyTurn && turnPhase === 'ACTION' && cellIsUnowned && Number(activePlayer.money) >= Number(myPosCell.price) && !activePlayer.inJail && !gameOver);
-            const buyButton = document.getElementById('buy-btn');
-            const purchaseHint = document.getElementById('purchase-hint');
-            buyButton.style.display = (canBuy && !auctionState) ? 'block' : 'none';
-            buyButton.disabled = !(canBuy && !auctionState);
-            if (canBuy && !auctionState) {
-                buyButton.innerText = `Купить «${myPosCell.name}» — ${myPosCell.price}`;
-                purchaseHint.innerText = 'Вы можете купить эту собственность или отказаться и провести аукцион.';
-            } else if (auctionState) purchaseHint.innerText = 'Идёт аукцион — обычная покупка недоступна.';
-            else if (turnPhase === 'ROLL') purchaseHint.innerText = activePlayer.inJail ? 'Вы в тюрьме: выберите способ выхода.' : 'Бросьте кубики, чтобы узнать, на какую клетку попадёте.';
-            else if (!isMyTurn) purchaseHint.innerText = 'Ожидайте своего хода.';
-            else if (myPosCell.price && ownedCells[myPosCell.id]) purchaseHint.innerText = 'Эта собственность уже занята.';
-            else purchaseHint.innerText = 'На текущей клетке нет недвижимости для покупки.';
             document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
             const selectedOwned = ownedCells[inspCell.id];
             const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
