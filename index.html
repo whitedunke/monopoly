@@ -1395,6 +1395,8 @@
         }
         let chanceDeck=[], chestDeck=[];
         
+        function isPurchasableCell(cell) { return !!(cell && ['street','railroad','utility'].includes(cell.type) && Number(cell.price)>0); }
+
         function getGridCoords(index) {
             if (index <= 10) return { row: 1, col: 1 + index };
             if (index <= 20) return { row: 1 + (index - 10), col: 11 };
@@ -1744,7 +1746,7 @@
         function processBuy(peerId) {
             const p = players[currentTurnIndex];
             const cell = p && BOARD_CELLS[p.pos];
-            if (p && !gameOver && !pendingCardAckId && !auctionState && p.id === peerId && turnPhase === 'ACTION' && cell && cell.price && !ownedCells[cell.id] && p.money >= cell.price) {
+            if (p && !gameOver && !pendingCardAckId && !auctionState && p.id === peerId && turnPhase === 'ACTION' && isPurchasableCell(cell) && !ownedCells[cell.id] && p.money >= cell.price) {
                 p.money -= cell.price;
                 ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0, mortgaged: false };
                 broadcastState(); broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
@@ -1804,7 +1806,7 @@
         }
 
         // --- АУКЦИОНЫ И ИПОТЕКА: решения подтверждает хост ---
-        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||pendingDebt||pendingCardAckId||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!cell.price||ownedCells[cell.id]||auctionState)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
+        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||pendingDebt||pendingCardAckId||!p||p.id!==peerId||turnPhase!=='ACTION'||!isPurchasableCell(cell)||ownedCells[cell.id]||auctionState)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
         function processAuctionBid(peerId,amount) { if(gameOver||!auctionState||!auctionState.active||auctionState.passed.includes(peerId))return; const bidder=players.find(p=>p.id===peerId); amount=Math.floor(Number(amount)); if(!bidder||!Number.isFinite(amount)||amount<=auctionState.highBid||amount>bidder.money||amount<1)return; auctionState.highBid=amount; auctionState.highBidder=peerId; broadcastLog('🔨 Ставка',bidder.name+' предлагает $'+amount+'.'); broadcastState(); }
         function processAuctionPass(peerId) { if(!auctionState||!auctionState.active||peerId===auctionState.highBidder||!players.some(p=>p.id===peerId)||auctionState.passed.includes(peerId))return; auctionState.passed.push(peerId); const remaining=players.filter(p=>p.id!==auctionState.highBidder&&!auctionState.passed.includes(p.id)); if(!remaining.length){const winner=players.find(p=>p.id===auctionState.highBidder),cell=BOARD_CELLS[auctionState.cellId]; if(winner&&winner.money>=auctionState.highBid){winner.money-=auctionState.highBid;ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:false};broadcastLog('🏆 Аукцион',winner.name+' покупает «'+cell.name+'» за $'+auctionState.highBid+'.');}else broadcastLog('Аукцион','Торги завершены без покупателя.');auctionState=null;}else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.'); broadcastState(); }
         function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price||(pendingDebt&&pendingDebt.debtorId!==p.id))return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); if(pendingDebt?.debtorId===p.id)settlePendingDebt(); broadcastState(); }
@@ -2051,7 +2053,7 @@
             // Render the landing purchase offer before the rest of the dashboard.
             const purchaseCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : null;
             const purchaseIsMyTurn = !!(activePlayer && activePlayer.id === myId);
-            const purchaseIsFree = !!(purchaseCell && purchaseCell.price > 0 && !ownedCells[purchaseCell.id]);
+            const purchaseIsFree = !!(isPurchasableCell(purchaseCell) && !ownedCells[purchaseCell.id]);
             const purchaseIsAction = turnPhase === 'ACTION' && !activePlayer?.inJail && !gameOver;
             const showPurchaseOffer = purchaseIsMyTurn && purchaseIsAction && purchaseIsFree && !pendingDebt && !pendingCardAckId;
             const purchaseButton = document.getElementById('buy-btn');
@@ -2066,7 +2068,7 @@
                         : activePlayer.money < purchaseCell.price
                             ? 'Недостаточно денег для покупки. Можно выставить объект на аукцион.'
                             : 'Вы остановились на свободной собственности. Купите её или начните аукцион.';
-                } else if (purchaseIsMyTurn && purchaseIsAction && purchaseCell?.price && ownedCells[purchaseCell.id]) {
+                } else if (purchaseIsMyTurn && purchaseIsAction && isPurchasableCell(purchaseCell) && ownedCells[purchaseCell.id]) {
                     purchaseMessage.textContent = 'Эта собственность уже принадлежит игроку.';
                 } else if (turnPhase === 'ROLL' && purchaseIsMyTurn) {
                     purchaseMessage.textContent = activePlayer?.inJail ? 'Вы в тюрьме: выберите способ выхода.' : 'Бросьте кубики, чтобы сделать ход.';
@@ -2143,7 +2145,7 @@
             document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&turnPhase==='ACTION'&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
             document.getElementById('estate-redeem-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&selectedCanRedeem);
             document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
-            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&BOARD_CELLS[activePlayer.pos].price&&!ownedCells[activePlayer.pos]);
+            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]);
 
             // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
@@ -2175,7 +2177,7 @@
             if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
-            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && myPosCell.price && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
             const selectedOwned = ownedCells[inspCell.id];
             const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
             const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
