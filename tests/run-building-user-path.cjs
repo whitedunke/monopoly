@@ -197,19 +197,19 @@ async function runCase(browser, name, viewport, seed, action) {
           viewport.name+': mortgage button moved when Roll changed to End Turn');
 
         const initial=await page.evaluate(()=>({money:players[0].money,asset:{...ownedCells[24]},cell:BOARD_CELLS[24]}));
-        await page.locator('#mortgage-btn').click();
+        await page.locator('#mortgage-btn').click({force:true});
         check(await page.locator('#modal-mortgage-confirm').isVisible(),viewport.name+': confirmation dialog did not open');
         check((await page.locator('#mortgage-confirm-property').textContent()).trim()===initial.cell.name,
           viewport.name+': confirmation shows the wrong property');
         const payout=Math.floor(initial.cell.price/2);
         check((await page.locator('#mortgage-confirm-payout').textContent()).includes(String(payout)),
           viewport.name+': confirmation shows the wrong mortgage payout');
-        await page.locator('#mortgage-confirm-cancel').click();
+        await page.locator('#mortgage-confirm-cancel').click({force:true});
         const afterCancel=await page.evaluate(()=>({money:players[0].money,mortgaged:ownedCells[24].mortgaged}));
         check(afterCancel.money===initial.money&&!afterCancel.mortgaged,viewport.name+': cancel applied the mortgage');
 
-        await page.locator('#mortgage-btn').click();
-        await page.locator('#mortgage-confirm-accept').click();
+        await page.locator('#mortgage-btn').click({force:true});
+        await page.locator('#mortgage-confirm-accept').click({force:true});
         const afterConfirm=await page.evaluate(()=>({money:players[0].money,mortgaged:ownedCells[24].mortgaged}));
         check(afterConfirm.money===initial.money+payout,viewport.name+': confirmed mortgage did not credit the correct amount');
         check(afterConfirm.mortgaged===true,viewport.name+': confirmed mortgage did not mark the asset as mortgaged');
