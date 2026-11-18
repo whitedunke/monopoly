@@ -1982,13 +1982,30 @@
         function submitAuctionBid(){const amount=Number(document.getElementById('auction-bid-input').value);if(isHost)processAuctionBid(myId,amount);else if(hostConn)hostConn.send({type:'AUCTION_BID',amount});}
         function passAuction(){if(isHost)processAuctionPass(myId);else if(hostConn)hostConn.send({type:'AUCTION_PASS'});}
         function mortgageSelected(){
-            const cellId=selectedCellId,cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],active=players[currentTurnIndex];
-            const hasBuildings=cell&&cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===myId&&(ownedCells[c.id].houses||0)>0);
+            const cellId=selectedCellId;
+            const cell=BOARD_CELLS[cellId];
+            const prop=ownedCells[cellId];
+            const active=players[currentTurnIndex];
+            const hasBuildings=!!(cell&&cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===myId&&(ownedCells[c.id].houses||0)>0));
             if(!active||active.id!==myId||!cell||!prop||prop.ownerId!==myId||prop.mortgaged||!cell.price||hasBuildings||
                (turnPhase!=='ACTION'&&turnPhase!=='ROLL')||(pendingDebt&&pendingDebt.debtorId!==myId))return;
             pendingMortgageCellId=Number(cellId);
             document.getElementById('mortgage-confirm-property').textContent=cell.name;
-            document.getElementById('mortgage-confirm-payout').textContent='
+            document.getElementById('mortgage-confirm-payout').textContent='$'+Math.floor(cell.price/2).toLocaleString('ru-RU');
+            document.getElementById('modal-mortgage-confirm').style.display='flex';
+        }
+        function cancelMortgageConfirmation(){
+            pendingMortgageCellId=null;
+            const modal=document.getElementById('modal-mortgage-confirm');
+            if(modal)modal.style.display='none';
+        }
+        function confirmMortgage(){
+            const cellId=pendingMortgageCellId;
+            if(!Number.isInteger(cellId))return;
+            cancelMortgageConfirmation();
+            if(isHost)processMortgage(myId,cellId);
+            else if(hostConn)hostConn.send({type:'MORTGAGE',cellId});
+        }
         function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
         function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
         function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
