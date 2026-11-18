@@ -18,7 +18,10 @@ function runMonopolyMechanicsSuite() {
     bankHouses = 32;
     bankHotels = 12;
     pendingDebt = null;
+    pendingCardPayments = null;
     pendingCardAckId = null;
+    bankruptcyAuctionQueue = [];
+    pendingTradeOffers = {};
     pendingDrawnCard = null;
     chanceDeck = [...CHANCE_CARDS];
     chestDeck = [...CHEST_CARDS];
@@ -80,6 +83,17 @@ function runMonopolyMechanicsSuite() {
     assert(calculateRent(1) === 2, 'Base rent on Житная should be 2');
     own([3], 'p2');
     assert(calculateRent(1) === 4, 'Monopoly rent without houses should double');
+  });
+
+  test('Улицы: корректная аренда за 3/4 дома и отель', () => {
+    reset();
+    own([1], 'p2');
+    ownedCells[1].houses = 3;
+    assert(calculateRent(1) === 90, 'Three houses should charge 90');
+    ownedCells[1].houses = 4;
+    assert(calculateRent(1) === 160, 'Four houses should charge 160');
+    ownedCells[1].houses = 5;
+    assert(calculateRent(1) === 250, 'Hotel should charge 250');
   });
 
   test('Железные дороги: тарифы за 1–4 станции', () => {
@@ -186,10 +200,12 @@ function runMonopolyMechanicsSuite() {
     reset();
     own([1], 'p1');
     own([3], 'p2');
-    processTradeAccept({
+    const tradeOffer={
       fromId: 'p1', toId: 'p2', offerMoney: 100, requestMoney: 50,
       offerProps: [1], requestProps: [3]
-    }, 'p2');
+    };
+    pendingTradeOffers.p2=tradeOffer;
+    processTradeAccept(tradeOffer, 'p2');
     assert(ownedCells[1].ownerId === 'p2' && ownedCells[3].ownerId === 'p1', 'Properties were not swapped');
     assert(players[0].money === 1450 && players[1].money === 1550, 'Trade cash transfer is wrong');
   });
@@ -261,9 +277,9 @@ function runMonopolyMechanicsSuite() {
     own([12,28], 'p2');
     lastDice = [1,1];
     chanceDeck = [{text:'Ближайшая коммунальная служба',type:'nearestUtility'}];
-    drawCard('chance',players[0]);
-    // For two utilities the card requires a fresh roll; deterministic fresh 4+4 => 80.
-    // Current code reuses the prior dice sum (2) and charges 20.
+    const oldRandom=Math.random;
+    Math.random=()=>0.6;
+    try { drawCard('chance',players[0]); } finally { Math.random=oldRandom; }
     return players[0].money !== 1420;
   });
 
@@ -275,6 +291,20 @@ function runMonopolyMechanicsSuite() {
     return auctionState === null && currentTurnIndex === 1;
   });
 
+  test('День рождения: должник может заложить имущество и погасить $10', () => {
+    reset([p('p1',1500),p('p2',5)]);
+    own([3],'p2');
+    chestDeck=[{text:'День рождения',type:'birthday'}];
+    drawCard('chest',players[0]);
+    assert(pendingDebt?.debtorId==='p2' && pendingDebt.amount===10, 'Birthday debt was not opened for the player who cannot pay');
+    assert(players.some(x=>x.id==='p2') && ownedCells[3]?.ownerId==='p2', 'Debtor was bankrupted before liquidation');
+    processMortgage('p2',3);
+    assert(!pendingDebt, 'Mortgage proceeds did not settle birthday debt');
+    assert(players.find(x=>x.id==='p1').money===1510, 'Birthday payment did not reach the card owner');
+    assert(players.find(x=>x.id==='p2').money===25 && ownedCells[3].mortgaged, 'Debtor mortgage result is incorrect');
+    assert(currentTurnIndex===0 && pendingCardAckId==='p1' && !pendingCardPayments, 'Turn did not return to the card owner');
+  });
+
   knownGap('Карточка дня рождения немедленно банкротит должника вместо разрешения долга', () => {
     reset([p('p1',1500),p('p2',5)]);
     own([3],'p2');
@@ -284,7 +314,7 @@ function runMonopolyMechanicsSuite() {
   });
 
   knownGap('При банкротстве перед банком имущество удаляется без аукциона', () => {
-    reset([p('p1',0),p('p2',1500)]);
+    reset([p('p1',0),p('p2',1500),p('p3',1500)]);
     own([1],'p1');
     handleBankruptcy(players[0],null);
     return !ownedCells[1] && auctionState===null;
@@ -303,6 +333,15 @@ function runMonopolyMechanicsSuite() {
     const before = players[1].money;
     processTradeAccept({fromId:'p1',toId:'p2',offerMoney:0,requestMoney:0,offerProps:[1],requestProps:[]},'p2');
     return ownedCells[1]?.ownerId==='p2' && players[1].money===before;
+  });
+
+  test('Обмен: изменённый payload не совпадает с предложением хоста', () => {
+    reset();
+    own([1],'p1');
+    const canonical={fromId:'p1',toId:'p2',offerMoney:100,requestMoney:0,offerProps:[1],requestProps:[]};
+    pendingTradeOffers.p2=canonical;
+    processTradeAccept({...canonical,offerMoney:0},'p2');
+    assert(ownedCells[1].ownerId==='p1' && players[0].money===1500 && players[1].money===1500, 'Modified offer payload was accepted');
   });
 
   report.summary = {
