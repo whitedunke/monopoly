@@ -318,7 +318,7 @@ function runMonopolyMechanicsSuite() {
     assert(players.find(x=>x.id==='p1').money===1510, 'Birthday payment did not reach the card owner');
     assert(players.find(x=>x.id==='p2').money===25 && ownedCells[3].mortgaged, 'Debtor mortgage result is incorrect');
     assert(currentTurnIndex===0 && pendingCardAckId==='p1' && !pendingCardPayments, 'Turn did not return to the card owner');
-    assert(document.getElementById('drawn-card-overlay').style.display==='flex', 'Card overlay was not restored for the card owner');
+    assert(document.getElementById('drawn-card-overlay').style.display==='flex', 'Card overlay was not restored: display='+document.getElementById('drawn-card-overlay').style.display+', myId='+myId+', ack='+pendingCardAckId+', drawn='+!!pendingDrawnCard+', debt='+JSON.stringify(pendingDebt)+', payments='+JSON.stringify(pendingCardPayments));
   });
 
   knownGap('Карточка дня рождения немедленно банкротит должника вместо разрешения долга', () => {
