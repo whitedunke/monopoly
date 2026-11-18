@@ -21,6 +21,7 @@ function check(value, message) {
 }
 async function runCase(browser, name, viewport, seed, action) {
   const page = await browser.newPage({ viewport });
+  page.setDefaultTimeout(7000);
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.route('**/*', route => {
@@ -125,6 +126,7 @@ async function runCase(browser, name, viewport, seed, action) {
       { name:'luxury-tax-cell-38', start:36, dice:[0,0], expectedPos:38, tax:100 }
     ]) {
       const page = await browser.newPage({ viewport:{width:390,height:844} });
+      page.setDefaultTimeout(7000);
       const pageErrors=[];
       page.on('pageerror',error=>pageErrors.push(error.message));
       await page.route('**/*',route=>{
@@ -174,6 +176,7 @@ async function runCase(browser, name, viewport, seed, action) {
       { name:'mobile-390px', size:{width:390,height:844} }
     ]) {
       const page=await browser.newPage({viewport:viewport.size});
+      page.setDefaultTimeout(7000);
       const pageErrors=[];
       page.on('pageerror',error=>pageErrors.push(error.message));
       await page.route('**/*',route=>{
