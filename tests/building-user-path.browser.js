@@ -6,7 +6,7 @@ window.__MONOPOLY_UI_TEST__ = {
     const mortgaged = options.mortgaged ?? [];
     const houses = options.houses ?? {};
     players = [
-      { id:'p1', name:'Тестовый игрок', money, pos:selected, color:PLAYER_COLORS[1], icon:TOKEN_ICONS[0], inJail:false, jailTurns:0, jailCards:[] },
+      { id:'p1', name:'Тестовый игрок', money, pos:selected, color:'#3b82f6', icon:'🚗', inJail:false, jailTurns:0, jailCards:[] },
       { id:'p2', name:'Второй игрок', money:1500, pos:0, color:PLAYER_COLORS[0], icon:TOKEN_ICONS[1], inJail:false, jailTurns:0, jailCards:[] }
     ];
     myId = 'p1';
