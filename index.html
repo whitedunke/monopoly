@@ -1122,6 +1122,30 @@
             }
         }
 
+        /* The mortgage action always occupies the right slot, regardless of the active turn button. */
+        #game-screen .action-buttons {
+            display:grid !important;
+            width:min(100%,430px);
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            align-items:center;
+            justify-content:stretch;
+            gap:10px;
+        }
+        #game-screen .action-buttons > button {
+            grid-column:1;
+            width:100% !important;
+            min-width:0;
+            justify-self:stretch;
+        }
+        #game-screen .action-buttons > #mortgage-btn {
+            grid-column:2;
+            grid-row:1;
+        }
+        @media(max-width:520px) {
+            #game-screen .action-buttons { gap:8px; }
+            #game-screen .action-buttons > button { padding:7px 6px; }
+        }
+
 </style>
 </head>
 <body>
@@ -1289,6 +1313,23 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-mortgage-confirm" role="dialog" aria-modal="true" aria-labelledby="mortgage-confirm-title">
+        <div class="modal-content" style="max-width:430px;">
+            <div class="modal-title" id="mortgage-confirm-title">Подтверждение залога</div>
+            <p style="color:#cbd5e1;text-align:center;line-height:1.6;margin-bottom:10px;">
+                Вы собираетесь заложить недвижимость <strong id="mortgage-confirm-property" style="color:#fff;"></strong>.
+            </p>
+            <p style="color:#cbd5e1;text-align:center;line-height:1.6;margin-bottom:22px;">
+                Банк выплатит вам <strong id="mortgage-confirm-payout" style="color:#34d399;font-size:20px;"></strong>.
+                Недвижимость останется вашей, но будет недоступна для получения аренды, пока вы её не выкупите.
+            </p>
+            <div style="display:flex;gap:10px;">
+                <button class="btn btn-secondary" id="mortgage-confirm-cancel" onclick="cancelMortgageConfirmation()">Отмена</button>
+                <button class="btn" id="mortgage-confirm-accept" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);" onclick="confirmMortgage()">Подтвердить залог</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modal-auction"><div class="modal-content"><div class="modal-title">Аукцион недвижимости</div><div id="auction-details" style="line-height:1.7;margin-bottom:14px;"></div><div class="input-group"><label for="auction-bid-input">Ваша ставка ($)</label><input type="number" id="auction-bid-input" min="1" step="1" value="10" style="width:100%;padding:10px;border-radius:8px;"></div><div style="display:flex;gap:10px;"><button class="btn" onclick="submitAuctionBid()">Сделать ставку</button><button class="btn btn-secondary" onclick="passAuction()">Пас</button></div></div></div>
 
     <script>
@@ -1414,6 +1455,7 @@
         let auctionState = null;
         let bankHouses = 32, bankHotels = 12;
         let pendingDebt = null;
+        let pendingMortgageCellId = null;
         let pendingCardPayments = null;
         let pendingCardAckId = null;
         let pendingDrawnCard = null;
@@ -1498,7 +1540,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -1934,12 +1976,19 @@
             }else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.');
             broadcastState();
         }
-        function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price||(pendingDebt&&pendingDebt.debtorId!==p.id))return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); if(pendingDebt?.debtorId===p.id)settlePendingDebt(); broadcastState(); }
+        function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||(turnPhase!=='ACTION'&&turnPhase!=='ROLL')||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price||(pendingDebt&&pendingDebt.debtorId!==p.id))return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); if(pendingDebt?.debtorId===p.id)settlePendingDebt(); broadcastState(); }
         function processRedeem(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],cost=cell?Math.ceil(cell.price*.55):Infinity; if(gameOver||pendingDebt||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||!prop.mortgaged||p.money<cost)return; p.money-=cost;prop.mortgaged=false;broadcastLog('🏦 Выкуп',p.name+' выкупил «'+cell.name+'» за $'+cost+'.');broadcastState(); }
         function startAuction(){if(isHost)processAuctionStart(myId);else if(hostConn)hostConn.send({type:'AUCTION_START'});}
         function submitAuctionBid(){const amount=Number(document.getElementById('auction-bid-input').value);if(isHost)processAuctionBid(myId,amount);else if(hostConn)hostConn.send({type:'AUCTION_BID',amount});}
         function passAuction(){if(isHost)processAuctionPass(myId);else if(hostConn)hostConn.send({type:'AUCTION_PASS'});}
-        function mortgageSelected(){if(isHost)processMortgage(myId,selectedCellId);else if(hostConn)hostConn.send({type:'MORTGAGE',cellId:selectedCellId});}
+        function mortgageSelected(){
+            const cellId=selectedCellId,cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],active=players[currentTurnIndex];
+            const hasBuildings=cell&&cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===myId&&(ownedCells[c.id].houses||0)>0);
+            if(!active||active.id!==myId||!cell||!prop||prop.ownerId!==myId||prop.mortgaged||!cell.price||hasBuildings||
+               (turnPhase!=='ACTION'&&turnPhase!=='ROLL')||(pendingDebt&&pendingDebt.debtorId!==myId))return;
+            pendingMortgageCellId=Number(cellId);
+            document.getElementById('mortgage-confirm-property').textContent=cell.name;
+            document.getElementById('mortgage-confirm-payout').textContent='
         function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
         function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
         function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
@@ -2276,7 +2325,418 @@
             const selectedCanRedeem=selectedMine&&selectedProp.mortgaged&&activePlayer&&activePlayer.money>=Math.ceil(inspCell.price*.55);
             document.getElementById('estate-selected-stat').innerText=selectedProp?(selectedMine?'Выбрано: '+inspCell.name+(selectedProp.mortgaged?' · залог':''):'Владелец: '+(players.find(p=>p.id===selectedProp.ownerId)?.name||'игрок')):'Выберите объект для управления';
             document.getElementById('estate-sell-btn').disabled=!(isMyTurn&&turnPhase==='ACTION'&&selectedCanSell&&(!pendingDebt||pendingDebt.debtorId===myId));
-            document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&turnPhase==='ACTION'&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
+            document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
+            document.getElementById('estate-redeem-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&selectedCanRedeem);
+            document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
+            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]);
+
+            // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
+            const buildButton=document.getElementById('estate-build-btn');
+            const buildGroup=BOARD_CELLS.filter(c=>c.type==='street'&&c.color===inspCell.color);
+            const buildGroupComplete=buildGroup.length>0&&buildGroup.every(c=>ownedCells[c.id]?.ownerId===myId&&!ownedCells[c.id].mortgaged);
+            const buildMin=buildGroup.length?Math.min(...buildGroup.map(c=>ownedCells[c.id]?.houses||0)):0;
+            const buildCount=selectedProp?.houses||0;
+            const buildStockAvailable=buildCount===4?bankHotels>0:bankHouses>0;
+            const canBuildSelected=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&inspCell.type==='street'&&selectedMine&&!selectedProp.mortgaged&&buildGroupComplete&&buildCount<5&&buildCount===buildMin&&activePlayer.money>=inspCell.housePrice&&buildStockAvailable;
+            let buildReason='Стройка доступна в вашу фазу действия после полного выкупа цветовой группы';
+            if(!isMyTurn)buildReason='Строить можно только во время вашего хода';
+            else if(turnPhase!=='ACTION'&&turnPhase!=='ROLL')buildReason='Сначала завершите текущее действие';
+            if(!selectedMine||inspCell.type!=='street')buildReason='Выберите принадлежащую вам улицу';
+            else if(!buildGroupComplete)buildReason='Сначала выкупите все улицы этой цветовой группы и снимите залог';
+            else if(buildCount>=5)buildReason='На этой улице уже построен отель';
+            else if(buildCount!==buildMin)buildReason='Соблюдайте равномерную застройку: сначала улица с наименьшим числом домов';
+            else if(!buildStockAvailable)buildReason=buildCount===4?'В банке закончились отели':'В банке закончились дома';
+            else if(activePlayer.money<inspCell.housePrice)buildReason='Недостаточно денег: дом стоит $'+inspCell.housePrice;
+            else if(pendingDebt||pendingCardAckId||auctionState)buildReason='Завершите текущее действие перед строительством';
+            const canBuildOn=c=>{const g=BOARD_CELLS.filter(x=>x.type==='street'&&x.color===c.color),a=ownedCells[c.id],n=a?.houses||0;return c.type==='street'&&a?.ownerId===myId&&g.length&&g.every(x=>ownedCells[x.id]?.ownerId===myId&&!ownedCells[x.id]?.mortgaged)&&n===Math.min(...g.map(x=>ownedCells[x.id]?.houses||0))&&n<5&&activePlayer.money>=c.housePrice&&(n===4?bankHotels:bankHouses)>0;};
+            const allowed=isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&!pendingDebt&&!pendingCardAckId&&!auctionState&&!gameOver;
+            const target=allowed?(canBuildSelected?inspCell:BOARD_CELLS.find(c=>c.id!==inspCell.id&&canBuildOn(c))):null;
+            buildButton.disabled=!target;buildButton.style.display='inline-flex';buildButton.dataset.cellId=target?String(target.id):'';
+            buildButton.textContent=target?((ownedCells[target.id].houses===4?'🏨 Отель: ':'🏠 Дом: ')+target.name+' — '+target.housePrice):'🏠 Строительство';
+            buildButton.title=target&&target.id!==inspCell.id?'На выбранной улице строить нельзя. Доступно строительство на '+target.name+'.':buildReason;
+            document.getElementById('roll-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && !activePlayer.inJail) ? 'inline-block' : 'none';
+            document.getElementById('pay-jail-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.money >= 50) ? 'inline-block' : 'none';
+            document.getElementById('jail-card-btn').style.display = (isMyTurn && turnPhase === 'ROLL' && activePlayer.inJail && activePlayer.jailCards?.length) ? 'inline-block' : 'none';
+            if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+            document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
+            
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            const selectedOwned = ownedCells[inspCell.id];
+            const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
+            const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
+            const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
+            document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
++Math.floor(cell.price/2).toLocaleString('ru-RU');
+            document.getElementById('modal-mortgage-confirm').style.display='flex';
+        }
+        function cancelMortgageConfirmation(){
+            pendingMortgageCellId=null;
+            const modal=document.getElementById('modal-mortgage-confirm');
+            if(modal)modal.style.display='none';
+        }
+        function confirmMortgage(){
+            const cellId=pendingMortgageCellId;
+            if(!Number.isInteger(cellId))return;
+            cancelMortgageConfirmation();
+            if(isHost)processMortgage(myId,cellId);
+            else if(hostConn)hostConn.send({type:'MORTGAGE',cellId});
+        }
+        function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
+        function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
+        function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
+        function renderAuction(){const modal=document.getElementById('modal-auction'),details=document.getElementById('auction-details');if(!modal||!details)return;if(!auctionState||!auctionState.active){modal.style.display='none';return;}const cell=BOARD_CELLS[auctionState.cellId],leader=players.find(p=>p.id===auctionState.highBidder),me=players.find(p=>p.id===myId);details.innerHTML='<b>'+cell.name+'</b><br>Текущая ставка: <b>$'+auctionState.highBid+'</b><br>Лидер: '+(leader?leader.name:'нет')+'<br>Пас: '+auctionState.passed.length+'/'+players.length;modal.style.display='flex';const input=document.getElementById('auction-bid-input');if(input&&me){input.min=auctionState.highBid+1;input.max=me.money;if(Number(input.value)<=auctionState.highBid)input.value=auctionState.highBid+1;}const buttons=modal.querySelectorAll('button'),passed=me&&auctionState.passed.includes(me.id);if(buttons[0])buttons[0].disabled=!me||passed||me.money<=auctionState.highBid;if(buttons[1])buttons[1].disabled=!me||passed||me.id===auctionState.highBidder;}
+        // --- ТОРГОВЛЯ ---
+        function openTradeModal() {
+            const select = document.getElementById('trade-target-select');
+            select.innerHTML = '';
+            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            if (players.length < 2) return alert("Недостаточно игроков для обмена.");
+            document.getElementById('modal-trade-offer').style.display = 'flex';
+            updateTradeModalProps();
+        }
+
+        function updateTradeModalProps() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const myPropsDiv = document.getElementById('trade-offer-props');
+            const targetPropsDiv = document.getElementById('trade-request-props');
+            myPropsDiv.innerHTML = ''; targetPropsDiv.innerHTML = '';
+
+            Object.keys(ownedCells).forEach(cellId => {
+                const info = ownedCells[cellId];
+                if (info.houses > 0) return;
+                const cell = BOARD_CELLS[cellId];
+                const html = `<label><input type="checkbox" value="${cellId}"> <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${cell.color || '#fff'};"></span> ${cell.name}</label>`;
+                if (info.ownerId === myId) myPropsDiv.innerHTML += html;
+                else if (info.ownerId === targetId) targetPropsDiv.innerHTML += html;
+            });
+            if(myPropsDiv.innerHTML==='') myPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+            if(targetPropsDiv.innerHTML==='') targetPropsDiv.innerHTML = '<i>Нет доступных участков</i>';
+        }
+
+        function sendTradeOffer() {
+            const targetId = document.getElementById('trade-target-select').value;
+            const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+            const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+            const offerProps = Array.from(document.querySelectorAll('#trade-offer-props input:checked')).map(cb => parseInt(cb.value));
+            const requestProps = Array.from(document.querySelectorAll('#trade-request-props input:checked')).map(cb => parseInt(cb.value));
+
+            const me = players.find(p => p.id === myId);
+            if (offerMoney > me.money) return alert("У вас недостаточно денег для этой сделки!");
+
+            const offerData = { type: 'TRADE_OFFER', fromId: myId, toId: targetId, fromName: me.name, offerMoney, requestMoney, offerProps, requestProps };
+            
+            if (isHost) {
+                if (targetId === myId) return;
+                pendingTradeOffers[targetId]=offerData;
+                const targetConn = clientConns.find(c => c.peer === targetId);
+                if(targetConn) targetConn.send(offerData);
+            } else {
+                hostConn.send(offerData);
+            }
+            closeModal('modal-trade-offer');
+            appendLog('Система', `Вы отправили предложение игроку.`);
+        }
+
+        function handleTradeRequest(data) {
+            pendingTrade = data;
+            const detailsDiv = document.getElementById('trade-request-details');
+            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
+            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!giveText) giveText = "Ничего<br>";
+
+            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
+            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            if(!getText) getText = "Ничего<br>";
+
+            detailsDiv.innerHTML = `
+                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
+                    <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
+                </div>
+            `;
+            document.getElementById('modal-trade-request').style.display = 'flex';
+        }
+
+        function acceptTrade() {
+            if(!pendingTrade) return;
+            const me = players.find(p => p.id === myId);
+            if (pendingTrade.requestMoney > me.money) { alert("У вас недостаточно денег!"); return; }
+            if (isHost) processTradeAccept(pendingTrade,myId);
+            else hostConn.send({ type: 'TRADE_ACCEPT', offer: pendingTrade });
+            closeModal('modal-trade-request');
+        }
+
+        function rejectTrade() {
+            if (isHost) { delete pendingTradeOffers[myId]; pendingTrade=null; broadcastLog('Отказ','Игрок отклонил сделку.'); }
+            else if(hostConn) hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            closeModal('modal-trade-request');
+        }
+
+        function sameTradeOffer(a,b){
+            const sameArray=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every((value,index)=>value===y[index]);
+            return !!(a&&b&&a.fromId===b.fromId&&a.toId===b.toId&&a.offerMoney===b.offerMoney&&a.requestMoney===b.requestMoney&&sameArray(a.offerProps,b.offerProps)&&sameArray(a.requestProps,b.requestProps));
+        }
+        function processTradeAccept(offer,acceptingPeerId) {
+            const canonical=pendingTradeOffers[acceptingPeerId];
+            if(!offer||!canonical||!sameTradeOffer(offer,canonical)||!acceptingPeerId||offer.toId!==acceptingPeerId||offer.fromId===offer.toId)return;
+            const p1=players.find(p=>p.id===canonical.fromId),p2=players.find(p=>p.id===canonical.toId);
+            const give=canonical.offerMoney,take=canonical.requestMoney;
+            const giveProps=canonical.offerProps,takeProps=canonical.requestProps;
+            if(!p1||!p2||!Number.isSafeInteger(give)||!Number.isSafeInteger(take)||give<0||take<0||p1.money<give||p2.money<take)return;
+            const unique=[...giveProps,...takeProps];
+            if(new Set(unique).size!==unique.length||unique.some(id=>!Number.isInteger(id)||!BOARD_CELLS[id]))return;
+            const validAsset=(id,ownerId)=>{
+                const cell=BOARD_CELLS[id],asset=ownedCells[id];
+                if(!cell||!asset||asset.ownerId!==ownerId)return false;
+                if(asset.houses>0)return false;
+                if(cell.type==='street'&&BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&(ownedCells[c.id]?.houses||0)>0))return false;
+                return true;
+            };
+            if(!giveProps.every(id=>validAsset(id,p1.id))||!takeProps.every(id=>validAsset(id,p2.id)))return;
+            p1.money=p1.money-give+take;p2.money=p2.money-take+give;
+            giveProps.forEach(id=>{ownedCells[id].ownerId=p2.id;ownedCells[id].color=p2.color;});
+            takeProps.forEach(id=>{ownedCells[id].ownerId=p1.id;ownedCells[id].color=p1.color;});
+            delete pendingTradeOffers[acceptingPeerId];
+            if(pendingTrade?.toId===acceptingPeerId)pendingTrade=null;
+            broadcastState();broadcastLog('🤝 Сделка',p1.name+' и '+p2.name+' успешно совершили обмен.');
+        }
+        function showDrawnCard(type,card,playerName) {
+            const isChance=type==='chance';
+            const overlay=document.getElementById('drawn-card-overlay');
+            const panel=document.getElementById('drawn-card');
+            if(!overlay||!panel||!card)return;
+            if(pendingCardAckId!==myId || pendingDebt || pendingCardPayments){overlay.style.display='none';return;}
+            panel.classList.toggle('chest',!isChance);
+            document.getElementById('drawn-card-top').textContent=isChance?'СЛУЧАЙ ИЗ ЖИЗНИ':'СООБЩЕНИЕ ОТ БАНКА';
+            document.getElementById('drawn-card-symbol').textContent=isChance?'❓':'🏦';
+            document.getElementById('drawn-card-heading').textContent=isChance?'ШАНС':'ОБЩЕСТВЕННАЯ КАЗНА';
+            document.getElementById('drawn-card-text').textContent=card.text;
+            document.getElementById('drawn-card-player').textContent='Карта игрока: '+(playerName||'участник');
+            const takeButton=panel.querySelector('button'); if(takeButton)takeButton.disabled=!!pendingCardAckId&&pendingCardAckId!==myId;
+            overlay.style.display='flex';
+        }
+        function takeDrawnCard() { if(!pendingCardAckId||pendingCardAckId!==myId||pendingDebt||pendingCardPayments)return; if(isHost)processAcknowledgeCard(myId); else if(hostConn)hostConn.send({type:'ACK_CARD'}); }
+        function closeDrawnCard() { takeDrawnCard(); }
+        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId||pendingDebt||pendingCardPayments)return; pendingCardAckId=null; pendingDrawnCard=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- ИНТЕРФЕЙС ---
+        function rollDice() { if (isHost) processRoll(myId); else if (hostConn) hostConn.send({ type: 'ROLL' }); }
+        function payJail() { if (isHost) processPayJail(myId); else if (hostConn) hostConn.send({ type: 'PAY_JAIL' }); }
+        function useJailCard() { if (isHost) processUseJailCard(myId); else if (hostConn) hostConn.send({ type: 'USE_JAIL_CARD' }); }
+        function buyCurrentCell() { if (isHost) processBuy(myId); else if (hostConn) hostConn.send({ type: 'BUY' }); }
+        function focusEstateManagement() {
+            const ownedStreetIds = BOARD_CELLS
+                .filter(cell => cell.type === 'street' && ownedCells[cell.id]?.ownerId === myId)
+                .map(cell => cell.id);
+            const selectedIsMine = selectedCellId !== null && ownedCells[selectedCellId]?.ownerId === myId;
+            if (!selectedIsMine && ownedStreetIds.length) {
+                const buildable = ownedStreetIds.find(id => {
+                    const cell = BOARD_CELLS[id];
+                    const group = BOARD_CELLS.filter(item => item.type === 'street' && item.color === cell.color);
+                    return group.length > 0 && group.every(item => ownedCells[item.id]?.ownerId === myId && !ownedCells[item.id]?.mortgaged);
+                });
+                selectedCellId = buildable ?? ownedStreetIds[0];
+                syncUI();
+            }
+            const assets = document.getElementById('estate-property-list');
+            if (assets) {
+                assets.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                assets.focus?.({ preventScroll: true });
+            }
+        }
+
+        function buildHouse(){const b=document.getElementById('estate-build-btn'),id=b&&b.dataset.cellId!==''?Number(b.dataset.cellId):selectedCellId;if(id===null||!Number.isInteger(id))return;if(isHost)processBuild(myId,id);else if(hostConn)hostConn.send({type:'BUILD',cellId:id});}
+        function endTurn() { if (isHost) processEndTurn(myId); else if (hostConn) hostConn.send({ type: 'END_TURN' }); }
+
+        function broadcastState() {
+            syncUI();
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard};
+            clientConns.forEach(c=>c.send(snapshot));
+        }
+        function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
+        function appendLog(n, t) { 
+            const b = document.getElementById('chat-messages'); 
+            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
+            b.scrollTop = b.scrollHeight; 
+        }
+        function sendChat() {
+            const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
+            const name = document.getElementById('username').value || 'Игрок';
+            if (isHost) broadcastLog(name, txt); else hostConn.send({ type: 'CHAT', name, text: txt }); i.value = '';
+        }
+
+        function renderDieFace(element, faceValue) {
+            element.className = `die face-${faceValue}`;
+            element.innerHTML = '';
+            for (let i = 0; i < faceValue; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'pip';
+                element.appendChild(pip);
+            }
+        }
+
+        function playDiceAnim(d1, d2, cb) {
+            const rollBtn = document.getElementById('roll-btn');
+            const die1 = document.getElementById('die-1');
+            const die2 = document.getElementById('die-2');
+            const wrap1 = document.getElementById('die-wrap-1');
+            const wrap2 = document.getElementById('die-wrap-2');
+
+            rollBtn.disabled = true;
+            die1.classList.add('rolling'); die2.classList.add('rolling');
+            wrap1.classList.add('rolling'); wrap2.classList.add('rolling');
+
+            let rollInterval = setInterval(() => {
+                renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
+                renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                die1.classList.remove('rolling'); die2.classList.remove('rolling');
+                wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
+
+                renderDieFace(die1, d1); renderDieFace(die2, d2);
+                rollBtn.disabled = false; 
+                if(cb) cb();
+            }, 800); 
+        }
+
+        function syncUI() {
+            renderBoard();
+            const activePlayer = players[currentTurnIndex];
+            document.getElementById('turn-banner').innerText = activePlayer ? `Ход: ${activePlayer.name}` : '';
+            const chanceCount = document.getElementById('chance-deck-count');
+            const chestCount = document.getElementById('chest-deck-count');
+            if (chanceCount) chanceCount.textContent = (chanceDeck.length || CHANCE_CARDS.length) + ' карт';
+            if (chestCount) chestCount.textContent = (chestDeck.length || CHEST_CARDS.length) + ' карт';
+
+            const myPosCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : BOARD_CELLS[0];
+            const isActivePlayersTurn = !!(activePlayer && activePlayer.id === myId);
+            const endTurnButton = document.getElementById('end-turn-btn');
+            if (endTurnButton) {
+                const canFinishTurn = isActivePlayersTurn && turnPhase === 'ACTION' && !gameOver && !auctionState && !pendingDebt && !pendingCardAckId;
+                endTurnButton.style.display = canFinishTurn ? 'inline-flex' : 'none';
+                endTurnButton.disabled = !canFinishTurn;
+                endTurnButton.textContent = (canFinishTurn && lastDice[0] === lastDice[1] && consecutiveDoubles > 0 && !activePlayer.inJail)
+                    ? 'Бросить ещё раз 🎲'
+                    : 'Завершить ход ⏭️';
+            }
+
+            // Render the landing purchase offer before the rest of the dashboard.
+            const purchaseCell = activePlayer ? BOARD_CELLS[activePlayer.pos] : null;
+            const purchaseIsMyTurn = !!(activePlayer && activePlayer.id === myId);
+            const purchaseIsFree = !!(isPurchasableCell(purchaseCell) && !ownedCells[purchaseCell.id]);
+            const purchaseIsAction = turnPhase === 'ACTION' && !activePlayer?.inJail && !gameOver;
+            const showPurchaseOffer = purchaseIsMyTurn && purchaseIsAction && purchaseIsFree && !pendingDebt && !pendingCardAckId;
+            const purchaseButton = document.getElementById('buy-btn');
+            const purchaseMessage = document.getElementById('purchase-hint');
+            if (purchaseButton && purchaseMessage) {
+                purchaseButton.style.display = showPurchaseOffer ? 'block' : 'none';
+                purchaseButton.disabled = !showPurchaseOffer || !!auctionState || activePlayer.money < purchaseCell.price;
+                if (showPurchaseOffer) {
+                    purchaseButton.textContent = `Купить «${purchaseCell.name}» — ${purchaseCell.price}`;
+                    purchaseMessage.textContent = auctionState
+                        ? 'Идёт аукцион: обычная покупка временно недоступна.'
+                        : activePlayer.money < purchaseCell.price
+                            ? 'Недостаточно денег для покупки. Можно выставить объект на аукцион.'
+                            : 'Вы остановились на свободной собственности. Купите её или начните аукцион.';
+                } else if (purchaseIsMyTurn && purchaseIsAction && isPurchasableCell(purchaseCell) && ownedCells[purchaseCell.id]) {
+                    purchaseMessage.textContent = 'Эта собственность уже принадлежит игроку.';
+                } else if (turnPhase === 'ROLL' && purchaseIsMyTurn) {
+                    purchaseMessage.textContent = activePlayer?.inJail ? 'Вы в тюрьме: выберите способ выхода.' : 'Бросьте кубики, чтобы сделать ход.';
+                } else if (!purchaseIsMyTurn && activePlayer) {
+                    purchaseMessage.textContent = 'Ожидайте своего хода.';
+                } else {
+                    purchaseMessage.textContent = 'После броска предложение о покупке появится здесь, если клетка свободна.';
+                }
+            }
+
+            ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
+            players.forEach((p, i) => {
+                const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
+                    .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
+                
+                const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
+
+                const html = `
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                        ${jailHTML}
+                        <div class="player-identity">
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
+                        </div>
+                        <div class="player-money">${p.money}</div>
+                        <div class="player-props-container">${propsHTML}</div>
+                    </div>`;
+                if (p.id !== myId) document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
+                
+                // Отрисовка фишек на доске
+                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+            });
+
+            const me = players.find(p=>p.id===myId);
+            const myAssets = Object.keys(ownedCells).filter(id=>ownedCells[id].ownerId===myId).map(Number);
+            const myBuildings = myAssets.reduce((n,id)=>n+(ownedCells[id].houses||0),0);
+            const mortgagedCount = myAssets.filter(id=>ownedCells[id].mortgaged).length;
+            const estateToken=document.getElementById('estate-token');
+            if(me){document.getElementById('estate-player-name').innerText=me.name;document.getElementById('estate-balance').innerText='$'+me.money.toLocaleString('ru-RU');estateToken.innerHTML=renderPawn(TOKEN_ICONS.indexOf(me.icon),me.color,'card');document.getElementById('estate-income').innerText='▲ $200 за прохождение ВПЕРЁД';}
+            document.getElementById('estate-assets-title').innerText='Ваше имущество ('+myAssets.length+' объектов)';
+            document.getElementById('estate-buildings-stat').innerText='🏠 Дома и отели: '+myBuildings;
+            document.getElementById('estate-mortgage-stat').innerText='🏦 Ипотека: '+(mortgagedCount||'нет');
+            document.getElementById('estate-property-list').innerHTML=myAssets.length?myAssets.map(id=>{const c=BOARD_CELLS[id],o=ownedCells[id],selected=Number(selectedCellId)===id;return `<button class="estate-property ${selected?'selected':''}" onclick="selectEstateAsset(${id})"><span class="estate-property-bar" style="background:${c.color||'#53677f'}"></span><span class="estate-property-name">${c.name}</span><span class="estate-property-price">$${c.price||0}</span><span class="estate-property-state">${o.mortgaged?'В залоге':(o.houses===5?'Отель':o.houses?o.houses+' дом.':'')||'Недвижимость'}</span></button>`;}).join(''):'<span style="color:#777;padding:12px">Пока нет недвижимости</span>';
+
+            const inspCell = BOARD_CELLS[selectedCellId === null ? (me?me.pos:0) : selectedCellId];
+            const inspOwner = ownedCells[inspCell.id];
+            const inspColorEl=document.getElementById('insp-color');if(inspColorEl)inspColorEl.style.background=inspCell.color||'#cbd5e1';
+            const inspTitleEl=document.getElementById('insp-title');if(inspTitleEl)inspTitleEl.innerText=inspCell.name;
+            
+            let metaText = '';
+            if (inspCell.price) {
+                metaText = `Цена: $${inspCell.price} | Рента: $${calculateRent(inspCell.id)}`;
+                if (inspOwner) {
+                    const ownerName = players.find(pl => pl.id === inspOwner.ownerId)?.name || 'Банк';
+                    metaText += ` | Владелец: ${ownerName}`;
+                }
+            } else {
+                metaText = inspCell.sub || '';
+            }
+            const inspMetaEl=document.getElementById('insp-meta');if(inspMetaEl)inspMetaEl.innerText=metaText;
+
+            const isMyTurn = activePlayer && activePlayer.id === myId;
+            const debtPanel=document.getElementById('debt-panel'),myDebt=!!(pendingDebt&&pendingDebt.debtorId===myId);
+            if(debtPanel){debtPanel.style.display=myDebt?'flex':'none';if(myDebt){const creditor=pendingDebt.creditorId?players.find(p=>p.id===pendingDebt.creditorId):null;document.getElementById('debt-message').textContent='Долг $'+pendingDebt.amount+' · '+pendingDebt.reason+(creditor?' · получатель: '+creditor.name:' · банку')+'. Продайте здания или заложите имущество.';}}
+            const selectedProp=ownedCells[inspCell.id];
+            const selectedMine=!!(selectedProp&&selectedProp.ownerId===myId);
+            const groupHasBuildings=BOARD_CELLS.some(c=>c.type==='street'&&c.color===inspCell.color&&(ownedCells[c.id]?.houses||0)>0);
+            const selectedCanSell=selectedMine&&!selectedProp.mortgaged&&(selectedProp.houses||0)>0;
+            const selectedCanMortgage=selectedMine&&!selectedProp.mortgaged&&inspCell.price&&!groupHasBuildings;
+            const selectedCanRedeem=selectedMine&&selectedProp.mortgaged&&activePlayer&&activePlayer.money>=Math.ceil(inspCell.price*.55);
+            document.getElementById('estate-selected-stat').innerText=selectedProp?(selectedMine?'Выбрано: '+inspCell.name+(selectedProp.mortgaged?' · залог':''):'Владелец: '+(players.find(p=>p.id===selectedProp.ownerId)?.name||'игрок')):'Выберите объект для управления';
+            document.getElementById('estate-sell-btn').disabled=!(isMyTurn&&turnPhase==='ACTION'&&selectedCanSell&&(!pendingDebt||pendingDebt.debtorId===myId));
+            document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
             document.getElementById('estate-redeem-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&selectedCanRedeem);
             document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
             document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]);
