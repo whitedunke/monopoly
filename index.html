@@ -1122,28 +1122,41 @@
             }
         }
 
-        /* The mortgage action always occupies the right slot, regardless of the active turn button. */
+        /* Action controls are split into stable left and right slots. */
         #game-screen .action-buttons {
             display:grid !important;
-            width:min(100%,430px);
-            grid-template-columns:repeat(2,minmax(0,1fr));
+            width:min(100%,560px);
+            grid-template-columns:minmax(0,1fr) auto;
             align-items:center;
             justify-content:stretch;
             gap:10px;
         }
-        #game-screen .action-buttons > button {
-            grid-column:1;
-            width:100% !important;
+        #game-screen .turn-action-slot {
             min-width:0;
-            justify-self:stretch;
+            display:flex;
+            flex-wrap:wrap;
+            align-items:center;
+            justify-content:center;
+            gap:10px;
         }
-        #game-screen .action-buttons > #mortgage-btn {
+        #game-screen .mortgage-action-slot {
             grid-column:2;
             grid-row:1;
+            min-width:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        #game-screen .mortgage-action-slot #mortgage-btn {
+            width:auto !important;
+            min-width:0;
+            white-space:nowrap;
         }
         @media(max-width:520px) {
             #game-screen .action-buttons { gap:8px; }
-            #game-screen .action-buttons > button { padding:7px 6px; }
+            #game-screen .turn-action-slot { gap:6px; }
+            #game-screen .turn-action-slot .btn { padding:7px 6px; }
+            #game-screen .mortgage-action-slot #mortgage-btn { padding:7px 8px; }
         }
 
 </style>
@@ -1227,15 +1240,19 @@
                         </div>
 
                         <div class="action-buttons">
-                            <button class="btn" id="roll-btn" onclick="rollDice()">Бросить кубики 🎲</button>
-                            <button class="btn" id="pay-jail-btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); display: none;" onclick="payJail()">Заплатить $50 💸</button>
-                            <button class="btn" id="jail-card-btn" style="background:#7c3aed;display:none;" onclick="useJailCard()">Использовать карту освобождения</button>
-            <button class="btn" id="auction-start-btn" style="background:#9a6b2f;display:none;" onclick="startAuction()">Аукцион</button>
-            <button class="btn" id="mortgage-btn" style="background:#8b5cf6;display:none;" onclick="mortgageSelected()">Заложить</button>
-            <button class="btn" id="redeem-btn" style="background:#0f766e;display:none;" onclick="redeemSelected()">Выкупить</button>
-                            <button class="btn" id="build-btn" style="background: linear-gradient(135deg, #10b981, #047857); display: none;" onclick="buildHouse()">Построить 🏠</button>
-                            <button class="btn" id="trade-btn" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: none;" onclick="openTradeModal()">Обмен 🤝</button>
-                            <button class="btn" id="end-turn-btn" style="background: linear-gradient(135deg, #64748b, #475569); display: none;" onclick="endTurn()">Завершить ход ⏭️</button>
+                            <div class="turn-action-slot">
+                                <button class="btn" id="roll-btn" onclick="rollDice()">Бросить кубики 🎲</button>
+                                <button class="btn" id="pay-jail-btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); display: none;" onclick="payJail()">Заплатить $50 💸</button>
+                                <button class="btn" id="jail-card-btn" style="background:#7c3aed;display:none;" onclick="useJailCard()">Использовать карту освобождения</button>
+                                <button class="btn" id="auction-start-btn" style="background:#9a6b2f;display:none;" onclick="startAuction()">Аукцион</button>
+                                <button class="btn" id="redeem-btn" style="background:#0f766e;display:none;" onclick="redeemSelected()">Выкупить</button>
+                                <button class="btn" id="build-btn" style="background: linear-gradient(135deg, #10b981, #047857); display: none;" onclick="buildHouse()">Построить 🏠</button>
+                                <button class="btn" id="trade-btn" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: none;" onclick="openTradeModal()">Обмен 🤝</button>
+                                <button class="btn" id="end-turn-btn" style="background: linear-gradient(135deg, #64748b, #475569); display: none;" onclick="endTurn()">Завершить ход ⏭️</button>
+                            </div>
+                            <div class="mortgage-action-slot">
+                                <button class="btn" id="mortgage-btn" style="background:#8b5cf6;display:none;" onclick="mortgageSelected()">Заложить</button>
+                            </div>
                         </div>
                         <div class="purchase-action">
                             <button class="btn" id="buy-btn" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); display: none;" onclick="buyCurrentCell()">Купить недвижимость</button>
