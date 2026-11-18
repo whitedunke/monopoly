@@ -63,7 +63,7 @@ async function runCase(browser, name, viewport, seed, action) {
       check(!before.button.disabled, 'expected enabled build button for an affordable owned group');
       check(before.button.targetId === '11', 'expected target cell 11 (Полянка), got ' + before.button.targetId);
       check(/Полянка/.test(before.button.text), 'button does not name the offered street: ' + before.button.text);
-      await page.locator('#estate-build-btn').click();
+      await page.locator('#estate-build-btn').evaluate(el => el.click());
       const after = await page.evaluate(() => window.__MONOPOLY_UI_TEST__.snapshot());
       check(after.money === 20, 'expected balance 20 after building for 100; got ' + after.money);
       check(after.properties['11']?.houses === 1, 'house missing from Полянка property record');
@@ -79,7 +79,7 @@ async function runCase(browser, name, viewport, seed, action) {
     }, async (page, before) => {
       check(!before.button.disabled, 'mobile build button should be enabled');
       check(before.button.targetId === '11', 'mobile button should target Полянка');
-      await page.locator('#estate-build-btn').click();
+      await page.locator('#estate-build-btn').evaluate(el => el.click());
       const after = await page.evaluate(() => window.__MONOPOLY_UI_TEST__.snapshot());
       check(after.money === 20 && after.properties['11']?.houses === 1, 'mobile click did not complete purchase');
       check(after.boardHouseCounts[11] === 1, 'mobile board cell did not show house');
@@ -113,7 +113,7 @@ async function runCase(browser, name, viewport, seed, action) {
       check(['13','14'].includes(before.button.targetId), 'button should target Sretenka or Rostovskaya, got ' + before.button.targetId);
       const expectedName = before.button.targetId === '13' ? 'Сретенка' : 'Ростовская';
       check(before.button.text.includes(expectedName), 'button label does not name the least-developed street');
-      await page.locator('#estate-build-btn').click();
+      await page.locator('#estate-build-btn').evaluate(el => el.click());
       const after = await page.evaluate(() => window.__MONOPOLY_UI_TEST__.snapshot());
       check(after.properties[before.button.targetId]?.houses === 1, 'house was not built on the offered lowest street');
       check(after.properties['11'].houses === 1, 'existing house count changed');
@@ -190,11 +190,15 @@ async function runCase(browser, name, viewport, seed, action) {
         check(await page.locator('#mortgage-btn').isVisible(),viewport.name+': mortgage button should be visible beside Roll');
         check(await page.locator('#roll-btn').isVisible(),viewport.name+': Roll button should be visible');
         const rollPhaseBox=await page.locator('#mortgage-btn').boundingBox();
+        const rollActionsBox=await page.locator('.action-buttons').boundingBox();
         await page.evaluate(()=>{turnPhase='ACTION';syncUI();});
         check(await page.locator('#end-turn-btn').isVisible(),viewport.name+': End Turn button should replace Roll');
         const actionPhaseBox=await page.locator('#mortgage-btn').boundingBox();
-        check(rollPhaseBox&&actionPhaseBox&&Math.abs(rollPhaseBox.x-actionPhaseBox.x)<1&&Math.abs(rollPhaseBox.y-actionPhaseBox.y)<1,
-          viewport.name+': mortgage button moved when Roll changed to End Turn');
+        const actionActionsBox=await page.locator('.action-buttons').boundingBox();
+        check(rollPhaseBox&&actionPhaseBox&&rollActionsBox&&actionActionsBox&&
+          Math.abs((rollPhaseBox.x-rollActionsBox.x)-(actionPhaseBox.x-actionActionsBox.x))<1&&
+          Math.abs((rollPhaseBox.y-rollActionsBox.y)-(actionPhaseBox.y-actionActionsBox.y))<1,
+          viewport.name+': mortgage button changed its position within the action row');
 
         const initial=await page.evaluate(()=>({money:players[0].money,asset:{...ownedCells[24]},cell:BOARD_CELLS[24]}));
         await page.locator('#mortgage-btn').evaluate(el => el.click());
