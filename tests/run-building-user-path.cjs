@@ -30,6 +30,9 @@ async function runCase(browser, name, viewport, seed, action) {
   });
   try {
     await page.goto('http://127.0.0.1:' + server.address().port + '/', { waitUntil:'domcontentloaded' });
+    const startupBodyText=await page.locator('body').innerText();
+    check(!/document\\.getElementById\\(['"](?:redeem-btn|build-btn)['"]\\)|function copyInviteLink\\s*\\(/.test(startupBodyText),
+      name + ': JavaScript source leaked into visible page text');
     await page.addScriptTag({ path:helperPath });
     await page.evaluate(options => window.__MONOPOLY_UI_TEST__.seed(options), seed);
 
