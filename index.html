@@ -2428,22 +2428,3 @@
     </script>
 </body>
 </html>
- + Math.floor((inspCell.price || 0) / 2) + ')';
-            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
-            renderAuction();
-
-            let canBuild = false;
-            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
-                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
-                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
-                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
-                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
-            }
-            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
-            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
-        }
-
-        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
-    </script>
-</body>
-</html>
