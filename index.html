@@ -1649,7 +1649,11 @@
             pendingCardPayments=null;
             const collectorIndex=players.findIndex(x=>x.id===flow.collectorId);
             if(collectorIndex>=0){currentTurnIndex=collectorIndex;turnPhase='ACTION';}
-            if(pendingCardAckId===flow.collectorId&&pendingDrawnCard)showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+            if(pendingCardAckId===flow.collectorId&&pendingDrawnCard&&myId===flow.collectorId){
+                showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+                const restoredOverlay=document.getElementById('drawn-card-overlay');
+                if(restoredOverlay&&!pendingDebt&&!pendingCardPayments&&pendingCardAckId===myId)restoredOverlay.style.display='flex';
+            }
             broadcastState();
         }
 
