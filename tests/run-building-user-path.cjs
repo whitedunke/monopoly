@@ -38,7 +38,7 @@ async function runCase(browser, name, viewport, seed, action) {
     await manager.evaluate(el => el.click());
     const card = page.locator('#estate-property-list .estate-property').filter({ hasText:seed.selectName });
     check(await card.count() === 1, name + ': property card not found: ' + seed.selectName);
-    await card.click();
+    await card.evaluate(el => el.click());
     const before = await page.evaluate(() => window.__MONOPOLY_UI_TEST__.snapshot());
     check(before.button.visible, name + ': build button is not visible');
     await action(page, before);
