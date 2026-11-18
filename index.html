@@ -1414,8 +1414,11 @@
         let auctionState = null;
         let bankHouses = 32, bankHotels = 12;
         let pendingDebt = null;
+        let pendingCardPayments = null;
         let pendingCardAckId = null;
         let pendingDrawnCard = null;
+        let bankruptcyAuctionQueue = [];
+        let pendingTradeOffers = {};
 
         window.addEventListener('DOMContentLoaded', () => {
             renderBoard();
@@ -1444,7 +1447,7 @@
             const sameColorCells = BOARD_CELLS.filter(c => c.color === cell.color);
             const hasMonopoly = sameColorCells.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId && !ownedCells[c.id].mortgaged);
             if (houses === 0) return hasMonopoly ? cell.rent * 2 : cell.rent;
-            const multipliers = [1, 5, 15, 40, 50, 60]; 
+            const multipliers = [1, 5, 15, 45, 80, 125]; 
             return cell.rent * multipliers[houses];
         }
 
@@ -1495,7 +1498,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardAckId=null; pendingDrawnCard=null; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -1543,12 +1546,24 @@
             else if (data.type === 'ACK_CARD') { processAcknowledgeCard(conn.peer); }
             else if (data.type === 'CHAT') { broadcastLog(data.name, data.text); }
             else if (data.type === 'TRADE_OFFER') {
-                if(data.fromId!==conn.peer||!players.some(p=>p.id===data.toId))return;
+                const allProps=[...(Array.isArray(data.offerProps)?data.offerProps:[]),...(Array.isArray(data.requestProps)?data.requestProps:[])];
+                if(data.fromId!==conn.peer||data.toId===data.fromId||!players.some(p=>p.id===data.toId)||
+                   !Number.isSafeInteger(data.offerMoney)||!Number.isSafeInteger(data.requestMoney)||data.offerMoney<0||data.requestMoney<0||
+                   !Array.isArray(data.offerProps)||!Array.isArray(data.requestProps)||allProps.some(id=>!Number.isInteger(id)||!BOARD_CELLS[id])||
+                   new Set(allProps).size!==allProps.length)return;
+                pendingTradeOffers[data.toId]=data;
                 if (data.toId === myId) handleTradeRequest(data);
                 else { const targetConn = clientConns.find(c => c.peer === data.toId); if (targetConn) targetConn.send(data); }
             }
-            else if (data.type === 'TRADE_ACCEPT') { processTradeAccept(data.offer,conn.peer); }
-            else if (data.type === 'TRADE_REJECT') { broadcastLog('Отказ', `${players.find(p=>p.id===data.fromId)?.name} отклонил сделку.`); }
+            else if (data.type === 'TRADE_ACCEPT') {
+                if(data.offer?.toId!==conn.peer)return;
+                processTradeAccept(data.offer,conn.peer);
+            }
+            else if (data.type === 'TRADE_REJECT') {
+                if(data.fromId!==conn.peer)return;
+                delete pendingTradeOffers[conn.peer];
+                broadcastLog('Отказ',(players.find(p=>p.id===conn.peer)?.name||'Игрок')+' отклонил сделку.');
+            }
         }
 
         function handleClientData(data) {
@@ -1558,8 +1573,8 @@
                 auctionState = data.auctionState || null;
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
-                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null;
-                if(pendingCardAckId && pendingDrawnCard) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardPayments = data.pendingCardPayments ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null;
+                if(pendingCardAckId && pendingCardAckId===myId && pendingDrawnCard && pendingDebt?.debtorId!==myId) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
                 else {const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
@@ -1584,26 +1599,99 @@
         function startDebtResolution(p,amount,creditorId=null,reason='Платёж') {
             amount=Math.max(0,Math.floor(Number(amount)||0));if(!p||!amount)return false;const creditor=creditorId?players.find(x=>x.id===creditorId):null;
             if(p.money>=amount){p.money-=amount;if(creditor)creditor.money+=amount;broadcastLog('💸 Оплата',p.name+' оплачивает $'+amount+' · '+reason+'.');return false;}
-            pendingDebt={debtorId:p.id,creditorId:creditor?creditor.id:null,amount,reason};turnPhase='ACTION';selectedCellId=p.pos;broadcastLog('⚠️ Долг',p.name+' должен $'+amount+' · '+reason+'. Продайте здания или заложите имущество.');
+            pendingDebt={debtorId:p.id,creditorId:creditor?creditor.id:null,amount,reason};turnPhase='ACTION';selectedCellId=p.pos;if(pendingCardAckId===p.id){const overlay=document.getElementById('drawn-card-overlay');if(overlay)overlay.style.display='none';}broadcastLog('⚠️ Долг',p.name+' должен $'+amount+' · '+reason+'. Продайте здания или заложите имущество.');
             if(!hasLiquidationOptions(p)){handleBankruptcy(p,creditor?creditor.id:null);return true;}return true;
         }
-        function settlePendingDebt(){if(!pendingDebt)return true;const debt=pendingDebt,p=players.find(x=>x.id===debt.debtorId);if(!p){pendingDebt=null;return false;}if(p.money>=debt.amount){p.money-=debt.amount;const creditor=debt.creditorId?players.find(x=>x.id===debt.creditorId):null;if(creditor)creditor.money+=debt.amount;pendingDebt=null;broadcastLog('✅ Долг погашен',p.name+' выплатил $'+debt.amount+'.');return true;}if(!hasLiquidationOptions(p))handleBankruptcy(p,debt.creditorId);return !pendingDebt;}
+        function settlePendingDebt(){
+            if(!pendingDebt)return true;
+            const debt=pendingDebt,p=players.find(x=>x.id===debt.debtorId);
+            if(!p){pendingDebt=null;if(pendingCardPayments)continueBirthdayPayments();return false;}
+            if(p.money>=debt.amount){
+                p.money-=debt.amount;
+                const creditor=debt.creditorId?players.find(x=>x.id===debt.creditorId):null;
+                if(creditor)creditor.money+=debt.amount;
+                pendingDebt=null;
+                broadcastLog('✅ Долг погашен',p.name+' выплатил $'+debt.amount+'.');
+                if(pendingCardPayments)continueBirthdayPayments();
+                else if(pendingCardAckId===p.id&&pendingDrawnCard)showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+                return true;
+            }
+            if(!hasLiquidationOptions(p)){
+                handleBankruptcy(p,debt.creditorId);
+                if(pendingCardPayments)continueBirthdayPayments();
+            }
+            return !pendingDebt;
+        }
+        function continueBirthdayPayments(){
+            const flow=pendingCardPayments;
+            if(!flow||pendingDebt)return;
+            const collector=players.find(x=>x.id===flow.collectorId);
+            if(!collector){pendingCardPayments=null;return;}
+            while(flow.payerIds.length){
+                const payerId=flow.payerIds.shift();
+                const payer=players.find(x=>x.id===payerId);
+                if(!payer||payer.id===collector.id)continue;
+                if(payer.money>=flow.amount){
+                    payer.money-=flow.amount;
+                    collector.money+=flow.amount;
+                    broadcastLog('🎂 День рождения',payer.name+' платит $'+flow.amount+' игроку '+collector.name+'.');
+                    continue;
+                }
+                currentTurnIndex=players.findIndex(x=>x.id===payer.id);
+                turnPhase='ACTION';
+                selectedCellId=payer.pos;
+                startDebtResolution(payer,flow.amount,collector.id,'день рождения');
+                if(pendingDebt){broadcastState();return;}
+                if(gameOver||pendingCardPayments!==flow)return;
+            }
+            pendingCardPayments=null;
+            const collectorIndex=players.findIndex(x=>x.id===flow.collectorId);
+            if(collectorIndex>=0){currentTurnIndex=collectorIndex;turnPhase='ACTION';}
+            broadcastState();
+        }
+
+        function startNextBankruptcyAuction(){
+            if(auctionState||!bankruptcyAuctionQueue.length||gameOver||players.length<2)return;
+            const next=bankruptcyAuctionQueue.shift(),cell=BOARD_CELLS[next.cellId];
+            if(!cell||!isPurchasableCell(cell)||ownedCells[next.cellId]){startNextBankruptcyAuction();return;}
+            auctionState={cellId:next.cellId,highBid:0,highBidder:null,passed:[],active:true,source:'bankruptcy',mortgaged:!!next.mortgaged};
+            broadcastLog('🔨 Аукцион банкротства','Недвижимость «'+cell.name+'» выставлена банком на торги.');
+        }
+
         function handleBankruptcy(p,creditorId=null) {
             if(!p||!players.some(x=>x.id===p.id))return;
             if(pendingDebt?.debtorId===p.id)creditorId=creditorId||pendingDebt.creditorId;
             const removedIndex=players.findIndex(x=>x.id===p.id),creditor=creditorId?players.find(x=>x.id===creditorId):null;
-            if(creditor&&p.money>0)creditor.money+=p.money;p.money=0;if(pendingDebt?.debtorId===p.id)pendingDebt=null;
+            if(creditor&&p.money>0)creditor.money+=p.money;
+            p.money=0;
+            if(pendingDebt?.debtorId===p.id)pendingDebt=null;
+            if(pendingCardAckId===p.id){pendingCardAckId=null;pendingDrawnCard=null;}
+            if(pendingCardPayments?.collectorId===p.id)pendingCardPayments=null;
             broadcastLog('☠️ Банкротство',p.name+' обанкротился и выбывает из игры.');
             Object.keys(ownedCells).forEach(id=>{
-                const asset=ownedCells[id]; if(asset.ownerId!==p.id)return;
-                if(creditor){asset.ownerId=creditor.id;asset.color=creditor.color;if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;asset.houses=0;}}
-                else {if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;}delete ownedCells[id];}
+                const asset=ownedCells[id];
+                if(asset.ownerId!==p.id)return;
+                if(creditor){
+                    asset.ownerId=creditor.id;asset.color=creditor.color;
+                    if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;asset.houses=0;}
+                }else{
+                    if(asset.houses){if(asset.houses===5)bankHotels++;else bankHouses+=asset.houses;asset.houses=0;}
+                    bankruptcyAuctionQueue.push({cellId:Number(id),mortgaged:!!asset.mortgaged});
+                    delete ownedCells[id];
+                }
             });
             if(removedIndex<currentTurnIndex)currentTurnIndex--;
             players.splice(removedIndex,1);
-            consecutiveDoubles=0; auctionState=null;
-            if(players.length<=1){gameOver=true;winnerId=players[0]?.id||null;turnPhase='GAME_OVER';broadcastLog('🏆 Победа',players[0]?players[0].name+' побеждает! Все соперники обанкротились.':'Партия завершена без победителя.');}
-            else {if(currentTurnIndex>=players.length)currentTurnIndex=0;turnPhase='ROLL';}
+            consecutiveDoubles=0;auctionState=null;
+            if(players.length<=1){
+                gameOver=true;winnerId=players[0]?.id||null;turnPhase='GAME_OVER';
+                bankruptcyAuctionQueue=[];pendingCardPayments=null;pendingCardAckId=null;pendingDrawnCard=null;
+                broadcastLog('🏆 Победа',players[0]?players[0].name+' побеждает! Все соперники обанкротились.':'Партия завершена без победителя.');
+            }else{
+                if(currentTurnIndex>=players.length)currentTurnIndex=0;
+                turnPhase='ROLL';
+                if(!creditor)startNextBankruptcyAuction();
+            }
             broadcastState();
         }
 
@@ -1632,7 +1720,8 @@
                 case 'jail':sendToJail(p);break;
                 case 'jailFree':p.jailCards=p.jailCards||[];p.jailCards.push(type);break;
                 case 'birthday':
-                    players.filter(x=>x.id!==p.id).forEach(x=>{x.money-=10;p.money+=10;if(x.money<0)handleBankruptcy(x,p.id);});
+                    pendingCardPayments={collectorId:p.id,payerIds:players.filter(x=>x.id!==p.id).map(x=>x.id),amount:10};
+                    continueBirthdayPayments();
                     break;
                 case 'repairs':{
                     let due=0;Object.keys(ownedCells).forEach(id=>{if(ownedCells[id].ownerId===p.id){const n=ownedCells[id].houses||0;due+=n===5?card.hotel:n*card.house;}});
@@ -1644,9 +1733,18 @@
                     if(owner&&owner.id!==p.id&&!asset.mortgaged){const rent=calculateRent(target,lastDice[0]+lastDice[1])*2;creditorId=owner.id;startDebtResolution(p,rent,owner.id,'двойная рента за железную дорогу');}break;
                 }
                 case 'nearestUtility':{
-                    const target=[12,28].find(x=>x>p.pos)??12;creditorId=resolveCardMovement(p,target,target<=p.pos,false);
+                    const target=[12,28].find(x=>x>p.pos)??12;
+                    creditorId=resolveCardMovement(p,target,target<=p.pos,false);
                     const asset=ownedCells[target],owner=asset&&players.find(x=>x.id===asset.ownerId);
-                    if(owner&&owner.id!==p.id&&!asset.mortgaged){const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length,rent=(lastDice[0]+lastDice[1])*(count===2?10:4);creditorId=owner.id;startDebtResolution(p,rent,owner.id,'рента за коммунальную службу');}break;
+                    if(owner&&owner.id!==p.id&&!asset.mortgaged){
+                        const count=[12,28].filter(x=>ownedCells[x]?.ownerId===owner.id&&!ownedCells[x]?.mortgaged).length;
+                        const freshDice=[Math.floor(Math.random()*6)+1,Math.floor(Math.random()*6)+1];
+                        const diceSum=freshDice[0]+freshDice[1],multiplier=count===2?10:4,rent=diceSum*multiplier;
+                        broadcastLog('🎲 Повторный бросок',p.name+' выбрасывает '+freshDice[0]+' и '+freshDice[1]+'. Рента: '+diceSum+' × '+multiplier+' = $'+rent+'.');
+                        creditorId=owner.id;
+                        startDebtResolution(p,rent,owner.id,'рента за коммунальную службу');
+                    }
+                    break;
                 }
             }
             if(card.type!=='jailFree')deck.push(card);
@@ -1792,7 +1890,12 @@
 
         function processEndTurn(peerId) {
             const p = players[currentTurnIndex];
-            if (!gameOver && !pendingDebt && !pendingCardAckId && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
+            if (!gameOver && !pendingDebt && !pendingCardAckId && !pendingCardPayments && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
+                const landedCell=BOARD_CELLS[p.pos];
+                if(isPurchasableCell(landedCell)&&!ownedCells[landedCell.id]){
+                    processAuctionStart(peerId);
+                    return;
+                }
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -1806,9 +1909,24 @@
         }
 
         // --- АУКЦИОНЫ И ИПОТЕКА: решения подтверждает хост ---
-        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||pendingDebt||pendingCardAckId||!p||p.id!==peerId||turnPhase!=='ACTION'||!isPurchasableCell(cell)||ownedCells[cell.id]||auctionState)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
+        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||pendingDebt||pendingCardAckId||pendingCardPayments||!p||p.id!==peerId||turnPhase!=='ACTION'||!isPurchasableCell(cell)||ownedCells[cell.id]||auctionState||bankruptcyAuctionQueue.length)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
         function processAuctionBid(peerId,amount) { if(gameOver||!auctionState||!auctionState.active||auctionState.passed.includes(peerId))return; const bidder=players.find(p=>p.id===peerId); amount=Math.floor(Number(amount)); if(!bidder||!Number.isFinite(amount)||amount<=auctionState.highBid||amount>bidder.money||amount<1)return; auctionState.highBid=amount; auctionState.highBidder=peerId; broadcastLog('🔨 Ставка',bidder.name+' предлагает $'+amount+'.'); broadcastState(); }
-        function processAuctionPass(peerId) { if(!auctionState||!auctionState.active||peerId===auctionState.highBidder||!players.some(p=>p.id===peerId)||auctionState.passed.includes(peerId))return; auctionState.passed.push(peerId); const remaining=players.filter(p=>p.id!==auctionState.highBidder&&!auctionState.passed.includes(p.id)); if(!remaining.length){const winner=players.find(p=>p.id===auctionState.highBidder),cell=BOARD_CELLS[auctionState.cellId]; if(winner&&winner.money>=auctionState.highBid){winner.money-=auctionState.highBid;ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:false};broadcastLog('🏆 Аукцион',winner.name+' покупает «'+cell.name+'» за $'+auctionState.highBid+'.');}else broadcastLog('Аукцион','Торги завершены без покупателя.');auctionState=null;}else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.'); broadcastState(); }
+        function processAuctionPass(peerId) {
+            if(!auctionState||!auctionState.active||peerId===auctionState.highBidder||!players.some(p=>p.id===peerId)||auctionState.passed.includes(peerId))return;
+            auctionState.passed.push(peerId);
+            const remaining=players.filter(p=>p.id!==auctionState.highBidder&&!auctionState.passed.includes(p.id));
+            if(!remaining.length){
+                const finished=auctionState,cell=BOARD_CELLS[finished.cellId],winner=players.find(p=>p.id===finished.highBidder);
+                if(winner&&cell&&winner.money>=finished.highBid){
+                    winner.money-=finished.highBid;
+                    ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:!!finished.mortgaged};
+                    broadcastLog('🏆 Аукцион',winner.name+' покупает «'+cell.name+'» за $'+finished.highBid+'.');
+                }else broadcastLog('Аукцион','Торги за «'+(cell?.name||'недвижимость')+'» завершены без покупателя.');
+                auctionState=null;
+                startNextBankruptcyAuction();
+            }else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.');
+            broadcastState();
+        }
         function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price||(pendingDebt&&pendingDebt.debtorId!==p.id))return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); if(pendingDebt?.debtorId===p.id)settlePendingDebt(); broadcastState(); }
         function processRedeem(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId],cost=cell?Math.ceil(cell.price*.55):Infinity; if(gameOver||pendingDebt||!p||p.id!==peerId||turnPhase!=='ACTION'||!cell||!prop||prop.ownerId!==p.id||!prop.mortgaged||p.money<cost)return; p.money-=cost;prop.mortgaged=false;broadcastLog('🏦 Выкуп',p.name+' выкупил «'+cell.name+'» за $'+cost+'.');broadcastState(); }
         function startAuction(){if(isHost)processAuctionStart(myId);else if(hostConn)hostConn.send({type:'AUCTION_START'});}
@@ -1861,6 +1979,7 @@
             
             if (isHost) {
                 if (targetId === myId) return;
+                pendingTradeOffers[targetId]=offerData;
                 const targetConn = clientConns.find(c => c.peer === targetId);
                 if(targetConn) targetConn.send(offerData);
             } else {
@@ -1901,19 +2020,24 @@
         }
 
         function rejectTrade() {
-            if (isHost) broadcastLog('Отказ', `Игрок отклонил сделку.`);
-            else hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
+            if (isHost) { delete pendingTradeOffers[myId]; pendingTrade=null; broadcastLog('Отказ','Игрок отклонил сделку.'); }
+            else if(hostConn) hostConn.send({ type: 'TRADE_REJECT', fromId: myId });
             closeModal('modal-trade-request');
         }
 
+        function sameTradeOffer(a,b){
+            const sameArray=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every((value,index)=>value===y[index]);
+            return !!(a&&b&&a.fromId===b.fromId&&a.toId===b.toId&&a.offerMoney===b.offerMoney&&a.requestMoney===b.requestMoney&&sameArray(a.offerProps,b.offerProps)&&sameArray(a.requestProps,b.requestProps));
+        }
         function processTradeAccept(offer,acceptingPeerId) {
-            if(!offer||!acceptingPeerId||offer.toId!==acceptingPeerId||offer.fromId===offer.toId)return;
-            const p1=players.find(p=>p.id===offer.fromId),p2=players.find(p=>p.id===offer.toId);
-            const give=Number(offer.offerMoney),take=Number(offer.requestMoney);
-            const giveProps=Array.isArray(offer.offerProps)?offer.offerProps:[],takeProps=Array.isArray(offer.requestProps)?offer.requestProps:[];
+            const canonical=pendingTradeOffers[acceptingPeerId];
+            if(!offer||!canonical||!sameTradeOffer(offer,canonical)||!acceptingPeerId||offer.toId!==acceptingPeerId||offer.fromId===offer.toId)return;
+            const p1=players.find(p=>p.id===canonical.fromId),p2=players.find(p=>p.id===canonical.toId);
+            const give=canonical.offerMoney,take=canonical.requestMoney;
+            const giveProps=canonical.offerProps,takeProps=canonical.requestProps;
             if(!p1||!p2||!Number.isSafeInteger(give)||!Number.isSafeInteger(take)||give<0||take<0||p1.money<give||p2.money<take)return;
             const unique=[...giveProps,...takeProps];
-            if(new Set(unique).size!==unique.length)return;
+            if(new Set(unique).size!==unique.length||unique.some(id=>!Number.isInteger(id)||!BOARD_CELLS[id]))return;
             const validAsset=(id,ownerId)=>{
                 const cell=BOARD_CELLS[id],asset=ownedCells[id];
                 if(!cell||!asset||asset.ownerId!==ownerId)return false;
@@ -1925,6 +2049,8 @@
             p1.money=p1.money-give+take;p2.money=p2.money-take+give;
             giveProps.forEach(id=>{ownedCells[id].ownerId=p2.id;ownedCells[id].color=p2.color;});
             takeProps.forEach(id=>{ownedCells[id].ownerId=p1.id;ownedCells[id].color=p1.color;});
+            delete pendingTradeOffers[acceptingPeerId];
+            if(pendingTrade?.toId===acceptingPeerId)pendingTrade=null;
             broadcastState();broadcastLog('🤝 Сделка',p1.name+' и '+p2.name+' успешно совершили обмен.');
         }
         function showDrawnCard(type,card,playerName) {
@@ -1932,6 +2058,7 @@
             const overlay=document.getElementById('drawn-card-overlay');
             const panel=document.getElementById('drawn-card');
             if(!overlay||!panel||!card)return;
+            if(pendingCardAckId!==myId || pendingDebt?.debtorId===myId){overlay.style.display='none';return;}
             panel.classList.toggle('chest',!isChance);
             document.getElementById('drawn-card-top').textContent=isChance?'СЛУЧАЙ ИЗ ЖИЗНИ':'СООБЩЕНИЕ ОТ БАНКА';
             document.getElementById('drawn-card-symbol').textContent=isChance?'❓':'🏦';
@@ -1941,9 +2068,9 @@
             const takeButton=panel.querySelector('button'); if(takeButton)takeButton.disabled=!!pendingCardAckId&&pendingCardAckId!==myId;
             overlay.style.display='flex';
         }
-        function takeDrawnCard() { if(!pendingCardAckId||pendingCardAckId!==myId)return; if(isHost)processAcknowledgeCard(myId); else if(hostConn)hostConn.send({type:'ACK_CARD'}); }
+        function takeDrawnCard() { if(!pendingCardAckId||pendingCardAckId!==myId||pendingDebt||pendingCardPayments)return; if(isHost)processAcknowledgeCard(myId); else if(hostConn)hostConn.send({type:'ACK_CARD'}); }
         function closeDrawnCard() { takeDrawnCard(); }
-        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId)return; pendingCardAckId=null; pendingDrawnCard=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
+        function processAcknowledgeCard(peerId) { if(!pendingCardAckId||pendingCardAckId!==peerId||players[currentTurnIndex]?.id!==peerId||pendingDebt||pendingCardPayments)return; pendingCardAckId=null; pendingDrawnCard=null; const overlay=document.getElementById('drawn-card-overlay'); if(overlay)overlay.style.display='none'; broadcastLog('🃏 Карта взята',players[currentTurnIndex].name+' ознакомился с картой и выполнил её указание.'); broadcastState(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // --- ИНТЕРФЕЙС ---
@@ -1977,7 +2104,7 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardAckId,pendingDrawnCard};
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
