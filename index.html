@@ -1574,7 +1574,7 @@
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
                 bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardPayments = data.pendingCardPayments ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null;
-                if(pendingCardAckId && pendingCardAckId===myId && pendingDrawnCard && pendingDebt?.debtorId!==myId) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
+                if(pendingCardAckId===myId && pendingDrawnCard && !pendingDebt && !pendingCardPayments) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
                 else {const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
@@ -1625,6 +1625,8 @@
         function continueBirthdayPayments(){
             const flow=pendingCardPayments;
             if(!flow||pendingDebt)return;
+            const cardOverlay=document.getElementById('drawn-card-overlay');
+            if(cardOverlay)cardOverlay.style.display='none';
             const collector=players.find(x=>x.id===flow.collectorId);
             if(!collector){pendingCardPayments=null;return;}
             while(flow.payerIds.length){
@@ -1647,6 +1649,7 @@
             pendingCardPayments=null;
             const collectorIndex=players.findIndex(x=>x.id===flow.collectorId);
             if(collectorIndex>=0){currentTurnIndex=collectorIndex;turnPhase='ACTION';}
+            if(pendingCardAckId===flow.collectorId&&pendingDrawnCard)showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
             broadcastState();
         }
 
@@ -2058,7 +2061,7 @@
             const overlay=document.getElementById('drawn-card-overlay');
             const panel=document.getElementById('drawn-card');
             if(!overlay||!panel||!card)return;
-            if(pendingCardAckId!==myId || pendingDebt?.debtorId===myId){overlay.style.display='none';return;}
+            if(pendingCardAckId!==myId || pendingDebt || pendingCardPayments){overlay.style.display='none';return;}
             panel.classList.toggle('chest',!isChance);
             document.getElementById('drawn-card-top').textContent=isChance?'СЛУЧАЙ ИЗ ЖИЗНИ':'СООБЩЕНИЕ ОТ БАНКА';
             document.getElementById('drawn-card-symbol').textContent=isChance?'❓':'🏦';
