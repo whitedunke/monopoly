@@ -168,6 +168,58 @@ async function runCase(browser, name, viewport, seed, action) {
       }
     }
 
+    // Mortgage confirmation and stable right-hand placement: only the left action changes from Roll to End Turn.
+    for (const viewport of [
+      { name:'desktop', size:{width:1366,height:900} },
+      { name:'mobile-390px', size:{width:390,height:844} }
+    ]) {
+      const page=await browser.newPage({viewport:viewport.size});
+      const pageErrors=[];
+      page.on('pageerror',error=>pageErrors.push(error.message));
+      await page.route('**/*',route=>{
+        if(route.request().url().startsWith('http://127.0.0.1:'))return route.continue();
+        return route.abort();
+      });
+      try {
+        await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'domcontentloaded'});
+        await page.addScriptTag({path:helperPath});
+        await page.evaluate(()=>window.__MONOPOLY_UI_TEST__.seed({money:500,owned:[24],selected:24,phase:'ROLL'}));
+        check(await page.locator('#mortgage-btn').isVisible(),viewport.name+': mortgage button should be visible beside Roll');
+        check(await page.locator('#roll-btn').isVisible(),viewport.name+': Roll button should be visible');
+        const rollPhaseBox=await page.locator('#mortgage-btn').boundingBox();
+        await page.evaluate(()=>{turnPhase='ACTION';syncUI();});
+        check(await page.locator('#end-turn-btn').isVisible(),viewport.name+': End Turn button should replace Roll');
+        const actionPhaseBox=await page.locator('#mortgage-btn').boundingBox();
+        check(rollPhaseBox&&actionPhaseBox&&Math.abs(rollPhaseBox.x-actionPhaseBox.x)<1&&Math.abs(rollPhaseBox.y-actionPhaseBox.y)<1,
+          viewport.name+': mortgage button moved when Roll changed to End Turn');
+
+        const initial=await page.evaluate(()=>({money:players[0].money,asset:{...ownedCells[24]},cell:BOARD_CELLS[24]}));
+        await page.locator('#mortgage-btn').click();
+        check(await page.locator('#modal-mortgage-confirm').isVisible(),viewport.name+': confirmation dialog did not open');
+        check((await page.locator('#mortgage-confirm-property').textContent()).trim()===initial.cell.name,
+          viewport.name+': confirmation shows the wrong property');
+        const payout=Math.floor(initial.cell.price/2);
+        check((await page.locator('#mortgage-confirm-payout').textContent()).includes(String(payout)),
+          viewport.name+': confirmation shows the wrong mortgage payout');
+        await page.locator('#mortgage-confirm-cancel').click();
+        const afterCancel=await page.evaluate(()=>({money:players[0].money,mortgaged:ownedCells[24].mortgaged}));
+        check(afterCancel.money===initial.money&&!afterCancel.mortgaged,viewport.name+': cancel applied the mortgage');
+
+        await page.locator('#mortgage-btn').click();
+        await page.locator('#mortgage-confirm-accept').click();
+        const afterConfirm=await page.evaluate(()=>({money:players[0].money,mortgaged:ownedCells[24].mortgaged}));
+        check(afterConfirm.money===initial.money+payout,viewport.name+': confirmed mortgage did not credit the correct amount');
+        check(afterConfirm.mortgaged===true,viewport.name+': confirmed mortgage did not mark the asset as mortgaged');
+        check(pageErrors.length===0,viewport.name+': browser errors: '+pageErrors.join(' | '));
+        passed.push(viewport.name+' — подтверждение ипотеки и фиксированное положение кнопки справа');
+      } catch(error) {
+        failed.push({name:'mortgage-confirm-'+viewport.name,error:String(error?.message||error)});
+        await page.screenshot({path:path.join(root,'mortgage-confirm-failure-'+viewport.name+'.png'),fullPage:true}).catch(()=>{});
+      } finally {
+        await page.close();
+      }
+    }
+
     console.log('=== MONOPOLY BUILDING USER-PATH AUTOTEST ===');
     for (const name of passed) console.log('PASS  ' + name);
     for (const item of failed) console.log('FAIL  ' + item.name + ': ' + item.error);
