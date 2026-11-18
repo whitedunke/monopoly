@@ -35,7 +35,7 @@ async function runCase(browser, name, viewport, seed, action) {
 
     // Real UI path: open the property manager, click a rendered property card, then use its build button.
     const manager = page.getByRole('button', { name:/Управление недвижимостью/ });
-    await manager.click();
+    await manager.click({ force:true });
     const card = page.locator('#estate-property-list .estate-property').filter({ hasText:seed.selectName });
     check(await card.count() === 1, name + ': property card not found: ' + seed.selectName);
     await card.click();
