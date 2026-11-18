@@ -291,6 +291,20 @@ function runMonopolyMechanicsSuite() {
     return auctionState === null && currentTurnIndex === 1;
   });
 
+  test('Свободная недвижимость: завершение хода запускает обязательный аукцион', () => {
+    reset([p('p1',1500,1),p('p2',1500)]);
+    turnPhase='ACTION';
+    lastDice=[1,2];
+    processEndTurn('p1');
+    assert(auctionState?.active && auctionState.cellId===1, 'Ending action skipped the mandatory auction');
+    processAuctionBid('p2',60);
+    processAuctionPass('p1');
+    assert(ownedCells[1]?.ownerId==='p2' && players[1].money===1440, 'Mandatory auction did not award property correctly');
+    assert(currentTurnIndex===0 && turnPhase==='ACTION', 'Auction unexpectedly advanced the turn');
+    processEndTurn('p1');
+    assert(currentTurnIndex===1 && turnPhase==='ROLL', 'Turn did not advance after auction was settled');
+  });
+
   test('День рождения: должник может заложить имущество и погасить $10', () => {
     reset([p('p1',1500),p('p2',5)]);
     own([3],'p2');
@@ -298,11 +312,13 @@ function runMonopolyMechanicsSuite() {
     drawCard('chest',players[0]);
     assert(pendingDebt?.debtorId==='p2' && pendingDebt.amount===10, 'Birthday debt was not opened for the player who cannot pay');
     assert(players.some(x=>x.id==='p2') && ownedCells[3]?.ownerId==='p2', 'Debtor was bankrupted before liquidation');
+    assert(document.getElementById('drawn-card-overlay').style.display==='none', 'Card overlay blocked the debtor during payment');
     processMortgage('p2',3);
     assert(!pendingDebt, 'Mortgage proceeds did not settle birthday debt');
     assert(players.find(x=>x.id==='p1').money===1510, 'Birthday payment did not reach the card owner');
     assert(players.find(x=>x.id==='p2').money===25 && ownedCells[3].mortgaged, 'Debtor mortgage result is incorrect');
     assert(currentTurnIndex===0 && pendingCardAckId==='p1' && !pendingCardPayments, 'Turn did not return to the card owner');
+    assert(document.getElementById('drawn-card-overlay').style.display==='flex', 'Card overlay was not restored for the card owner');
   });
 
   knownGap('Карточка дня рождения немедленно банкротит должника вместо разрешения долга', () => {
@@ -318,6 +334,17 @@ function runMonopolyMechanicsSuite() {
     own([1],'p1');
     handleBankruptcy(players[0],null);
     return !ownedCells[1] && auctionState===null;
+  });
+
+  test('Банкротство перед банком: имущество продаётся через аукцион', () => {
+    reset([p('p1',0),p('p2',1500),p('p3',1500)]);
+    own([1],'p1');
+    handleBankruptcy(players[0],null);
+    assert(auctionState?.active && auctionState.cellId===1, 'Bankruptcy did not start auction for released property');
+    processAuctionBid('p2',75);
+    processAuctionPass('p3');
+    assert(auctionState===null, 'Bankruptcy auction did not close after all opponents passed');
+    assert(ownedCells[1]?.ownerId==='p2' && players.find(x=>x.id==='p2').money===1425, 'Auction winner did not receive property at winning bid');
   });
 
   knownGap('Банкротство во время отрицательной карточки оставляет подтверждение карты заблокированным', () => {
