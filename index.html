@@ -1126,10 +1126,13 @@
         #game-screen .action-buttons {
             display:grid !important;
             width:min(100%,560px);
-            grid-template-columns:minmax(0,1fr) auto;
+            grid-template-columns:minmax(0,1fr);
             align-items:center;
             justify-content:stretch;
             gap:10px;
+        }
+        #game-screen .action-buttons.has-mortgage {
+            grid-template-columns:minmax(0,1fr) auto;
         }
         #game-screen .turn-action-slot {
             min-width:0;
@@ -1137,7 +1140,7 @@
             display:flex;
             flex-wrap:wrap;
             align-items:center;
-            justify-content:flex-end;
+            justify-content:center;
             gap:10px;
         }
         #game-screen .mortgage-action-slot {
@@ -2402,7 +2405,27 @@
             const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
             const canRedeem = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && selectedOwned.mortgaged && activePlayer.money >= Math.ceil(inspCell.price * 0.55);
             document.getElementById('mortgage-btn').style.display = canMortgage ? 'inline-block' : 'none';
-            document.getElementById('mortgage-btn').innerText = 'Заложить (+$' + Math.floor((inspCell.price || 0) / 2) + ')';
+            document.querySelector('#game-screen .action-buttons').classList.toggle('has-mortgage', !!canMortgage);
+            document.getElementById('mortgage-btn').innerText = 'Заложить (+
+            document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
+            renderAuction();
+
+            let canBuild = false;
+            if (isMyTurn && !pendingDebt && inspCell.type === 'street' && inspOwner && inspOwner.ownerId === myId && !inspOwner.mortgaged && inspOwner.houses < 5) {
+                const sameColor = BOARD_CELLS.filter(c => c.color === inspCell.color);
+                const hasMonopoly = sameColor.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === myId);
+                const minHouses = Math.min(...sameColor.map(c => ownedCells[c.id]?.houses || 0));
+                if (hasMonopoly && inspOwner.houses === minHouses && activePlayer.money >= inspCell.housePrice) canBuild = true;
+            }
+            document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
+            if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+        }
+
+        function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }
+    </script>
+</body>
+</html>
+ + Math.floor((inspCell.price || 0) / 2) + ')';
             document.getElementById('redeem-btn').style.display = canRedeem ? 'inline-block' : 'none';
             renderAuction();
 
