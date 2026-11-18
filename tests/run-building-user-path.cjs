@@ -217,6 +217,25 @@ async function runCase(browser, name, viewport, seed, action) {
         const afterConfirm=await page.evaluate(()=>({money:players[0].money,mortgaged:ownedCells[24].mortgaged}));
         check(afterConfirm.money===initial.money+payout,viewport.name+': confirmed mortgage did not credit the correct amount');
         check(afterConfirm.mortgaged===true,viewport.name+': confirmed mortgage did not mark the asset as mortgaged');
+
+        // When mortgage becomes unavailable, collapse its right slot and re-center the remaining actions.
+        await page.evaluate(()=>syncUI());
+        const noMortgageLayout=await page.evaluate(()=>{
+          const row=document.querySelector('#game-screen .action-buttons');
+          const turn=document.querySelector('#game-screen .turn-action-slot');
+          const mortgage=document.querySelector('#game-screen .mortgage-action-slot');
+          const r=row.getBoundingClientRect(), t=turn.getBoundingClientRect();
+          return {
+            hasMortgage:row.classList.contains('has-mortgage'),
+            mortgageSlotDisplay:getComputedStyle(mortgage).display,
+            rowWidth:r.width,
+            turnWidth:t.width,
+            centerDifference:Math.abs((r.left+r.width/2)-(t.left+t.width/2))
+          };
+        });
+        check(!noMortgageLayout.hasMortgage,viewport.name+': hidden mortgage still reserved the right column');
+        check(noMortgageLayout.mortgageSlotDisplay==='none',viewport.name+': empty mortgage slot was not collapsed');
+        check(noMortgageLayout.centerDifference<1,viewport.name+': remaining actions are not centered after mortgage hides');
         check(pageErrors.length===0,viewport.name+': browser errors: '+pageErrors.join(' | '));
         passed.push(viewport.name+' — подтверждение ипотеки и фиксированное положение кнопки справа');
       } catch(error) {
