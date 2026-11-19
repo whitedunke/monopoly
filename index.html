@@ -2365,6 +2365,54 @@
             white-space:nowrap !important;
         }
 
+
+        /* Keep the turn controls anchored to the bottom of the board centre.
+           The old flex-centred stack moved whenever the square board changed size. */
+        #game-screen .board-center {
+            position:relative !important;
+        }
+        #game-screen .center-main {
+            position:absolute !important;
+            inset:0 !important;
+            z-index:2 !important;
+            box-sizing:border-box !important;
+            width:100% !important;
+            min-width:0 !important;
+            min-height:0 !important;
+            padding:clamp(8px,1.4vw,16px) !important;
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) !important;
+            grid-template-rows:auto auto minmax(0,1fr) auto auto !important;
+            align-content:stretch !important;
+            align-items:center !important;
+            justify-items:center !important;
+            gap:clamp(4px,.7vh,8px) !important;
+        }
+        #game-screen .center-main > .brand-logo {
+            grid-row:1 !important;
+            align-self:end !important;
+            margin:0 !important;
+        }
+        #game-screen .center-main > #turn-banner {
+            grid-row:2 !important;
+            margin:0 !important;
+        }
+        #game-screen .center-main > .dice-area {
+            grid-row:3 !important;
+            align-self:center !important;
+            margin:0 !important;
+        }
+        #game-screen .center-main > .action-buttons {
+            grid-row:4 !important;
+            align-self:end !important;
+            margin:0 !important;
+        }
+        #game-screen .center-main > .purchase-action {
+            grid-row:5 !important;
+            align-self:start !important;
+            margin:0 !important;
+        }
+
 </style>
 </head>
 <body>
