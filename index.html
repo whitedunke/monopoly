@@ -2611,29 +2611,143 @@
     <div class="modal-overlay" id="modal-auction"><div class="modal-content"><div class="modal-title">Аукцион недвижимости</div><div id="auction-details" style="line-height:1.7;margin-bottom:14px;"></div><div class="input-group"><label for="auction-bid-input">Ваша ставка ($)</label><input type="number" id="auction-bid-input" min="1" step="1" value="10" style="width:100%;padding:10px;border-radius:8px;"></div><div style="display:flex;gap:10px;"><button class="btn" onclick="submitAuctionBid()">Сделать ставку</button><button class="btn btn-secondary" onclick="passAuction()">Пас</button></div></div></div>
 
     <script>
-        // Иконки для фишек игроков
-        const TOKEN_ICONS = ['🚗', '🎩', '🐕', '🚢', '👢', '🐈', '🦆', '🚲'];
+        // Восемь металлических игровых фигурок. В состоянии партии хранятся ID, не emoji.
+        const TOKEN_IDS = ['car', 'topHat', 'terrier', 'battleship', 'boot', 'cat', 'duck', 'bicycle'];
+        const LEGACY_TOKEN_EMOJIS = ['🚗', '🎩', '🐕', '🚢', '👢', '🐈', '🦆', '🚲'];
+        const PAWN_NAMES = ['Гоночный автомобиль', 'Цилиндр', 'Терьер', 'Линкор', 'Сапог', 'Кошка', 'Утка', 'Велосипед'];
         const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#84cc16'];
         const MAX_PLAYERS = 8;
-        // Объёмные фишки: автомобиль, шляпа, собака, корабль, ботинок и кошка.
+
+        // Объёмные SVG-миниатюры с металлическим корпусом и цветной эмалевой подставкой.
+        // Материалы задаются единообразно, чтобы набор выглядел как настоящие настольные фишки.
         const PAWN_SHAPES = [
-            '<path d="M12 37h40l-3-12a6 6 0 0 0-6-5H23a7 7 0 0 0-6 4l-5 13Z"/><path d="M18 24h24l5 10H13l5-10Z" opacity=".42"/><circle cx="21" cy="39" r="5" fill="#263238"/><circle cx="44" cy="39" r="5" fill="#263238"/><path d="M22 20l4-7h14l5 7" fill="none" stroke="currentColor" stroke-width="3"/>',
-            '<path d="M17 26h30l-3 7H20l-3-7Z"/><path d="M20 23h24l-2-13H22l-2 13Z"/><path d="M15 25h34v5H15z"/><path d="M23 13h18" stroke="#fff" stroke-width="2" opacity=".55"/>',
-            '<path d="M18 30c0-7 6-12 14-12 5 0 9 2 12 6l7 2 3 7-6 5H22l-7-4 3-4Z"/><path d="M27 20l-2-8 9 5 7-4 1 10"/><circle cx="43" cy="27" r="1.8" fill="#263238"/><path d="M21 36v8m12-7v8m12-8v8" stroke="#263238" stroke-width="4" stroke-linecap="round"/>',
-            '<path d="M10 34h44l-7 12H19L10 34Z"/><path d="M31 12v22H17l14-22Z"/><path d="M34 17l14 17H34V17Z" opacity=".55"/><path d="M31 10v-3" stroke="currentColor" stroke-width="3"/>',
-            '<path d="M23 12h14v18c0 5 4 8 10 10l5 3v6H13v-7c0-4 3-7 7-10l3-5V12Z"/><path d="M22 43h28" stroke="#263238" stroke-width="3" opacity=".55"/><path d="M24 17h12" stroke="#fff" stroke-width="2" opacity=".55"/>',
-            '<path d="M18 27l5-15 9 9 10-9 5 16c5 4 6 12 1 17-8 8-27 8-35 0-5-5-3-14 5-18Z"/><path d="M23 14l2 11m15-11-2 11" stroke="#fff" stroke-width="2" opacity=".55"/><circle cx="27" cy="34" r="2" fill="#263238"/><circle cx="39" cy="34" r="2" fill="#263238"/><path d="M30 40q3 3 6 0" fill="none" stroke="#263238" stroke-width="2" stroke-linecap="round"/>',
-            '<path d="M12 39c0-7 6-12 14-12 5 0 9 2 12 6l6-1 7 5-3 5c-4 4-11 6-20 6h-6c-6 0-10-3-10-9Z"/><path d="M18 30l-3-7 9 4m12 0 4-7 5 8"/><path d="M44 32l10 2-8 5Z" fill="#d69a32" stroke="#8b5a2b"/><circle cx="40" cy="30" r="1.8" fill="#263238"/><path d="M22 39q8-7 16 0" fill="none" stroke="#d9e2d9" stroke-width="2"/><path d="M17 43q-5 4-9 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
-            '<circle cx="17" cy="42" r="9" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="42" r="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M17 42l11-18 10 18H17l9-12h13l9 12M28 24h-7m17 18 6-18m-8 0h10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="28" cy="24" r="3" fill="#d9e2d9"/><circle cx="38" cy="42" r="3" fill="#d9e2d9"/>'
+            // Гоночный автомобиль.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M8 38l3-8 7-3 6-10q2-3 6-3h9q4 0 7 4l6 10 5 3 2 8-4 5H11Z" fill="__METAL__" stroke="#4d5558" stroke-width="1.5"/>
+                <path d="M22 27l6-9q1-2 4-2h6q3 0 5 3l5 8Z" fill="#567487" stroke="#344b59" stroke-width="1.2"/>
+                <path d="M30 17v10m10-10 5 10" fill="none" stroke="#e8f5f8" stroke-width="1.4" opacity=".85"/>
+                <path d="M12 31h41l3 5H10Z" fill="__ENAMEL__" stroke="#5a5145" stroke-width="1"/>
+                <path d="M15 35h10m14 0h10" stroke="#fff" stroke-width="1.2" opacity=".8"/>
+                <path d="M9 38h46l-3 5H13Z" fill="__DARK__"/>
+                <circle cx="19" cy="42" r="5.3" fill="#30363a" stroke="#dce0df" stroke-width="1.5"/><circle cx="46" cy="42" r="5.3" fill="#30363a" stroke="#dce0df" stroke-width="1.5"/>
+                <circle cx="19" cy="42" r="2" fill="#c5ccca"/><circle cx="46" cy="42" r="2" fill="#c5ccca"/>
+                <path d="M10 34l4-2m39 2-4-2" stroke="#fff3bd" stroke-width="2.4"/>
+            </g>`,
+            // Цилиндр.
+            `<g stroke-linejoin="round">
+                <path d="M8 39q1-5 24-5t24 5l-2 5q-22 5-44 0Z" fill="__DARK__" stroke="#3d4448" stroke-width="1.4"/>
+                <path d="M15 37V21q0-4 5-5h24q5 1 5 5v16q-17 5-34 0Z" fill="__METAL__" stroke="#555d61" stroke-width="1.5"/>
+                <path d="M20 19q12-4 24 0v17q-12 3-24 0Z" fill="#fff" opacity=".16"/>
+                <path d="M14 30q18 4 36 0v6q-18 5-36 0Z" fill="__ENAMEL__" stroke="#494d4e" stroke-width="1"/>
+                <path d="M18 21q3-3 6-3" fill="none" stroke="#fff" stroke-width="1.8" opacity=".85"/>
+            </g>`,
+            // Терьер.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M15 30q0-8 10-10 12-3 20 6l4 10q-2 8-14 8H22q-8-2-7-10Z" fill="__METAL__" stroke="#555d61" stroke-width="1.4"/>
+                <path d="M18 26q-6-5-4-12 8 1 11 10m17 0q5-7 12-5-1 9-8 12" fill="__DARK__" stroke="#4b5356" stroke-width="1.3"/>
+                <path d="M24 13q7-6 16 0l3 12q-6 8-17 2Z" fill="__METAL__" stroke="#555d61" stroke-width="1.3"/>
+                <path d="M24 24q8 4 17-1l-1 9q-8 7-16 0Z" fill="#d5d7d4" stroke="#737a78" stroke-width="1"/>
+                <ellipse cx="27" cy="23" rx="1.7" ry="2" fill="#262b2d"/><ellipse cx="39" cy="23" rx="1.7" ry="2" fill="#262b2d"/>
+                <path d="M31 31q3-4 6 0l-3 3Z" fill="#343a3c"/><path d="M18 32q-7-1-8-8" fill="none" stroke="__DARK__" stroke-width="3"/>
+                <path d="M21 36v8m12-7v8m12-8v8" stroke="__DARK__" stroke-width="3.8"/>
+                <path d="M19 31q12 6 25 0l1 4q-13 7-27 0Z" fill="__ENAMEL__" stroke="#514c45" stroke-width="1"/>
+                <circle cx="34" cy="35" r="1.7" fill="#f8df8a" stroke="#6b5b38" stroke-width=".7"/>
+            </g>`,
+            // Линкор.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M7 37h50l-7 10H16Z" fill="__DARK__" stroke="#40484b" stroke-width="1.4"/>
+                <path d="M12 34h40l-4 7H16Z" fill="__METAL__" stroke="#636b6d" stroke-width="1.2"/>
+                <path d="M19 28h25l4 7H16Z" fill="#c5cdcb" stroke="#687173" stroke-width="1"/>
+                <rect x="24" y="20" width="15" height="9" rx="2" fill="__METAL__" stroke="#50585a" stroke-width="1.2"/>
+                <path d="M27 20v-8h8v8m-4-8V7" fill="none" stroke="#747d7f" stroke-width="2"/>
+                <path d="M29 12h8l9-4" fill="none" stroke="#555d60" stroke-width="1.8"/>
+                <path d="M18 29h10v-5q-5-4-10 0Z" fill="__ENAMEL__" stroke="#4e5557" stroke-width="1"/>
+                <path d="M21 24v-8m0 0 8-4M14 40h37" fill="none" stroke="#f8f6ec" stroke-width="1.2" opacity=".7"/>
+                <circle cx="20" cy="36" r="1.2" fill="#30383a"/><circle cx="27" cy="36" r="1.2" fill="#30383a"/><circle cx="34" cy="36" r="1.2" fill="#30383a"/><circle cx="41" cy="36" r="1.2" fill="#30383a"/>
+            </g>`,
+            // Сапог.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M21 10h18v19q0 6 7 9l9 4q3 2 2 7H11q-3-5 1-9l7-8q2-3 2-8Z" fill="__METAL__" stroke="#535b5f" stroke-width="1.5"/>
+                <path d="M22 13h15v16q0 5 6 8l-4 3H19q6-8 6-13Z" fill="#fff" opacity=".14"/>
+                <path d="M20 11h20v6H20Z" fill="__DARK__" stroke="#454b4e" stroke-width="1.2"/>
+                <path d="M20 19h17m-17 5h16m-16 5h15" stroke="#eef0ea" stroke-width="1.2" opacity=".7"/>
+                <path d="M26 19l8 4m-8 1 8 4m-8 1 7 4" stroke="__ENAMEL__" stroke-width="1.8"/>
+                <circle cx="23" cy="19" r="1.1" fill="#60696b"/><circle cx="38" cy="19" r="1.1" fill="#60696b"/><circle cx="23" cy="25" r="1.1" fill="#60696b"/><circle cx="38" cy="25" r="1.1" fill="#60696b"/>
+                <path d="M13 44q14 5 30 1l10 2q2 2 0 5H12q-3-4 1-8Z" fill="__DARK__" stroke="#353b3d" stroke-width="1.2"/>
+                <path d="M15 48h36" stroke="#e0e2dc" stroke-width="1.4"/>
+            </g>`,
+            // Кошка.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M19 39q-13 1-12-9 1-7 9-8" fill="none" stroke="__DARK__" stroke-width="5"/>
+                <path d="M18 42q-3-10 3-19 5-7 13-7 12 0 15 12 3 8-1 17Z" fill="__METAL__" stroke="#555d61" stroke-width="1.4"/>
+                <path d="M20 19 18 7q7 1 12 9m8 0q5-9 12-8l-3 13" fill="__METAL__" stroke="#555d61" stroke-width="1.4"/>
+                <path d="M22 20q8-8 18-1l5 9q-11 6-22 0Z" fill="#fff" opacity=".17"/>
+                <ellipse cx="28" cy="25" rx="1.8" ry="2.2" fill="#263034"/><ellipse cx="40" cy="25" rx="1.8" ry="2.2" fill="#263034"/>
+                <path d="M32 31l3 2-3 2-3-2Z" fill="#bd7b79"/><path d="M32 35q-4 4-8 1m8-1q4 4 8 1" fill="none" stroke="#50585a" stroke-width="1.3"/>
+                <path d="M24 39q9 5 19 0" fill="none" stroke="__ENAMEL__" stroke-width="3"/><path d="M25 43q7 6 16 0" fill="none" stroke="#b6bdbb" stroke-width="2"/>
+            </g>`,
+            // Утка.
+            `<g stroke-linejoin="round" stroke-linecap="round">
+                <path d="M14 38q-4-9 4-14 6-4 13-2 10 2 15 10l7 7q-8 7-22 7-13 0-17-8Z" fill="__METAL__" stroke="#555d61" stroke-width="1.4"/>
+                <path d="M23 25q-3-12 7-17 11-4 17 5 4 8-2 14l-6 7-11-2Z" fill="__METAL__" stroke="#555d61" stroke-width="1.4"/>
+                <path d="M27 22q7-8 16-3" fill="none" stroke="#fff" stroke-width="2" opacity=".65"/>
+                <path d="M42 25q9-3 14 3-6 5-14 2Z" fill="#d99a35" stroke="#825a2d" stroke-width="1.2"/>
+                <circle cx="40" cy="17" r="2" fill="#303639"/><circle cx="40.5" cy="16.5" r=".65" fill="#fff"/>
+                <path d="M19 31q11-9 22 2-6 11-18 7Z" fill="__DARK__" stroke="#555d61" stroke-width="1.1"/>
+                <path d="M18 40h29" stroke="#fff" stroke-width="1" opacity=".6"/><path d="M25 46v5m15-6 1 6m-18 0h8m8 0h8" stroke="#c58b34" stroke-width="2.2"/>
+                <path d="M19 27 12 23l4 11" fill="__ENAMEL__" stroke="#555d61" stroke-width="1"/>
+            </g>`,
+            // Велосипед.
+            `<g stroke-linecap="round" stroke-linejoin="round" fill="none">
+                <circle cx="16" cy="39" r="11" stroke="#3b4144" stroke-width="3.2"/><circle cx="48" cy="39" r="11" stroke="#3b4144" stroke-width="3.2"/>
+                <circle cx="16" cy="39" r="8.5" stroke="#d8dedd" stroke-width=".9"/><circle cx="48" cy="39" r="8.5" stroke="#d8dedd" stroke-width=".9"/>
+                <path d="M16 39 28 20 38 39H16l9-14h13l10 14M28 20l-4-4m16 0h8m-6 0 6 23" stroke="__METAL__" stroke-width="3.4"/>
+                <path d="M16 39 38 39 28 20" stroke="__ENAMEL__" stroke-width="2.3"/>
+                <path d="M27 19h-9m22 0h10M24 16h9" stroke="#42494c" stroke-width="2.5"/>
+                <circle cx="38" cy="39" r="3" fill="__DARK__" stroke="#d8dedd" stroke-width="1"/>
+                <path d="M38 39l5 6m-9-6-5 6M12 39h8m24-9 4-3" stroke="#fff" stroke-width=".9" opacity=".6"/>
+            </g>`
         ];
+
         function getSafePlayerColor(color) {
             return PLAYER_COLORS.includes(color) ? color : PLAYER_COLORS[0];
         }
+        function getPawnIndex(tokenId) {
+            const index = TOKEN_IDS.indexOf(tokenId);
+            if (index >= 0) return index;
+            const legacyIndex = LEGACY_TOKEN_EMOJIS.indexOf(tokenId);
+            return legacyIndex >= 0 ? legacyIndex : 0;
+        }
+        let pawnRenderSequence = 0;
         function renderPawn(index, color, size = 'board') {
-            const safeIndex = Number.isInteger(index) && index >= 0 ? index : 0;
-            const shape = PAWN_SHAPES[safeIndex % PAWN_SHAPES.length];
+            const safeIndex = Number.isInteger(index) && index >= 0 && index < PAWN_SHAPES.length ? index : 0;
             const safeColor = getSafePlayerColor(color);
-            return '<span class="pawn pawn-' + size + '" style="--pawn-color:' + safeColor + '" aria-label="Фишка игрока"><svg viewBox="0 0 64 64" role="img" aria-hidden="true"><ellipse cx="32" cy="53" rx="23" ry="6" fill="#17251c" opacity=".22"/><path d="M10 45q0-5 22-5t22 5v5q0 6-22 6T10 50v-5Z" fill="#243b2e" opacity=".65"/><ellipse cx="32" cy="44" rx="22" ry="7" fill="var(--pawn-color)" stroke="#fff" stroke-width="2"/><g fill="#fff" stroke="#d9e2d9" stroke-width="1.2" stroke-linejoin="round" transform="translate(0 1)">' + shape + '</g><path d="M15 43q17-7 34 0" fill="none" stroke="#fff" stroke-width="1.5" opacity=".35"/></svg></span>';
+            const tokenName = PAWN_NAMES[safeIndex];
+            // SVG fragment IDs are document-wide: every rendered instance needs its own set.
+            const renderId = 'pawn-instance-' + (++pawnRenderSequence);
+            const metalId = renderId + '-metal';
+            const darkId = renderId + '-dark';
+            const enamelId = renderId + '-enamel';
+            const baseId = renderId + '-base';
+            const shape = PAWN_SHAPES[safeIndex]
+                .replaceAll('__METAL__', 'url(#' + metalId + ')')
+                .replaceAll('__DARK__', 'url(#' + darkId + ')')
+                .replaceAll('__ENAMEL__', 'url(#' + enamelId + ')');
+            return '<span class="pawn pawn-' + size + '" style="--pawn-color:' + safeColor + '" title="' + tokenName + '" aria-label="Игровая фигурка: ' + tokenName + '">' +
+                '<svg viewBox="0 0 64 64" role="img" aria-hidden="true">' +
+                '<defs>' +
+                '<linearGradient id="' + metalId + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#e1e5e3"/><stop offset=".48" stop-color="#929b9a"/><stop offset=".72" stop-color="#f7f8f4"/><stop offset="1" stop-color="#697274"/></linearGradient>' +
+                '<linearGradient id="' + darkId + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#667174"/><stop offset="1" stop-color="#272f32"/></linearGradient>' +
+                '<linearGradient id="' + enamelId + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".25" stop-color="var(--pawn-color)"/><stop offset="1" stop-color="#25352d"/></linearGradient>' +
+                '<linearGradient id="' + baseId + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf5"/><stop offset=".25" stop-color="var(--pawn-color)"/><stop offset="1" stop-color="#26342e"/></linearGradient>' +
+                '</defs>' +
+                '<ellipse cx="32" cy="58" rx="23" ry="4" fill="#222a27" opacity=".22"/>' +
+                '<path d="M10 49q0-4 22-4t22 4v5q0 4-22 4t-22-4Z" fill="url(#' + baseId + ')" stroke="#4c5651" stroke-width="1.2"/>' +
+                '<ellipse cx="32" cy="49" rx="22" ry="5.5" fill="url(#' + baseId + ')" stroke="#fffdf4" stroke-width="1.4"/>' +
+                '<ellipse cx="32" cy="49" rx="15" ry="3.2" fill="none" stroke="#f8f0d8" stroke-width="1" opacity=".78"/>' +
+                '<path d="M17 51q15 4 30 0" fill="none" stroke="#26342e" stroke-width="1" opacity=".45"/>' +
+                shape +
+                '</svg></span>';
         }
 
         const BOARD_CELLS = [
@@ -2868,7 +2982,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -2899,7 +3013,7 @@
         function handleHostData(data, conn) {
             if (data.type === 'JOIN' && players.length < MAX_PLAYERS && !players.some(player => player.id === conn.peer)) {
                 const idx = players.length;
-                players.push({ id: conn.peer, name: normalizePlayerName(data.name), money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0, jailCards: [] });
+                players.push({ id: conn.peer, name: normalizePlayerName(data.name), money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_IDS[idx], inJail: false, jailTurns: 0, jailCards: [] });
                 broadcastState(); broadcastLog('Система', `${normalizePlayerName(data.name)} в игре.`);
             } else if (data.type === 'JOIN') {
                 conn.send({ type: 'ROOM_FULL', maxPlayers: MAX_PLAYERS });
@@ -3890,7 +4004,7 @@
                     <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${playerColor}">
                         ${jailHTML}
                         <div class="player-identity">
-                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), playerColor, 'card')}</span>
+                            <span class="player-token-icon">${renderPawn(getPawnIndex(p.icon), playerColor, 'card')}</span>
                             <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${safePlayerName}</span></span>
                             ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
                         </div>
@@ -3903,7 +4017,7 @@
                 const previousPos = lastRenderedPositions[p.id];
                 const moved = previousPos !== undefined && previousPos !== p.pos;
                 const tokenCell = document.getElementById(`tokens-cell-${p.pos}`);
-                if (tokenCell) tokenCell.innerHTML += `<div class="board-token" style="--token-color:${playerColor}" data-player="${safePlayerName}" title="${safePlayerName}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), playerColor, 'board')}</div>`;
+                if (tokenCell) tokenCell.innerHTML += `<div class="board-token" style="--token-color:${playerColor}" data-player="${safePlayerName}" title="${safePlayerName}">${renderPawn(getPawnIndex(p.icon), playerColor, 'board')}</div>`;
                 if (moved) animatePawnPath(p.id, previousPos, p.pos);
             });
             lastRenderedPositions = Object.fromEntries(players.map(p => [p.id, p.pos]));
@@ -3913,7 +4027,7 @@
             const myBuildings = myAssets.reduce((n,id)=>n+(ownedCells[id].houses||0),0);
             const mortgagedCount = myAssets.filter(id=>ownedCells[id].mortgaged).length;
             const estateToken=document.getElementById('estate-token');
-            if(me){document.getElementById('estate-player-name').innerText=me.name;document.getElementById('estate-balance').innerText='$'+me.money.toLocaleString('ru-RU');estateToken.innerHTML=renderPawn(TOKEN_ICONS.indexOf(me.icon),me.color,'card');document.getElementById('estate-income').innerText='▲ $200 за прохождение ВПЕРЁД';}
+            if(me){document.getElementById('estate-player-name').innerText=me.name;document.getElementById('estate-balance').innerText='$'+me.money.toLocaleString('ru-RU');estateToken.innerHTML=renderPawn(getPawnIndex(me.icon),me.color,'card');document.getElementById('estate-income').innerText='▲ $200 за прохождение ВПЕРЁД';}
             document.getElementById('estate-assets-title').innerText='Ваше имущество ('+myAssets.length+' объектов)';
             document.getElementById('estate-buildings-stat').innerText='🏠 Дома и отели: '+myBuildings;
             document.getElementById('estate-mortgage-stat').innerText='🏦 Ипотека: '+(mortgagedCount||'нет');
