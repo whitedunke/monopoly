@@ -43,8 +43,93 @@ const path = require('path');
         }).join('');
       }
       document.getElementById('left-players').innerHTML = Array.from({length:3}, (_,i) =>
-        '<div class="player-card"><div class="player-identity"><span class="player-token-icon">🚗</span><span class="player-name-wrap"><span class="player-seat">Игрок '+(i+1)+'</span><span class="player-name">Игрок '+(i+1)+'</span></span></div><div class="player-money">$'+(1500-i*200)+'</div></div>'
+        '<div class="player-card"><div class="player-identity"><span class="player-token-icon">🚗</span><span class="player-name-wrap"><span class="player-seat">Игрок '+(i+1)+'</span><span class="player-name">Игрок '+(i+1)+'</span></span></div><div class="player-money">
+
+    await page.screenshot({ path: 'screenshots/' + c.name + '.png', fullPage: true });
+    const metrics = await page.evaluate(() => {
+      const rect = el => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom };
+      };
+      const overlap = (a,b) => a && b && Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1;
+      const game = document.getElementById('game-screen');
+      const panel = document.getElementById('estate-dashboard');
+      const wallet = document.querySelector('.estate-wallet');
+      const player = document.querySelector('.estate-wallet .estate-player');
+      const balance = document.querySelector('.estate-wallet > div:last-child');
+      const heading = document.querySelector('.estate-panel-heading > div');
+      const manage = document.querySelector('.estate-open-manager');
+      const board = document.querySelector('.board');
+      const mortgageButton = document.getElementById('mortgage-btn');
+      const mortgageCenter = document.querySelector('#game-screen .center-main');
+      const mortgageBefore = rect(mortgageButton);
+      document.getElementById('roll-btn').style.display = 'none';
+      document.getElementById('end-turn-btn').style.display = 'inline-flex';
+      const mortgageAfter = rect(mortgageButton);
+      const mortgageRect = rect(mortgageButton);
+      const mortgageCenterRect = rect(mortgageCenter);
+      const purchaseRect = rect(document.querySelector('#game-screen .purchase-action'));
+      const mortgageStableAcrossTurnPhases = !!mortgageBefore && !!mortgageAfter && Math.abs(mortgageBefore.y - mortgageAfter.y) <= 1;
+      const mortgageInsideCenter = !!mortgageRect && !!mortgageCenterRect &&
+        mortgageRect.left >= mortgageCenterRect.left - 1 && mortgageRect.right <= mortgageCenterRect.right + 1 &&
+        mortgageRect.top >= mortgageCenterRect.top - 1 && mortgageRect.bottom <= mortgageCenterRect.bottom + 1;
+      const mortgageClearOfPurchase = !!mortgageRect && !!purchaseRect && mortgageRect.bottom <= purchaseRect.top + 1;
+      const actions = [...document.querySelectorAll('.estate-actions .btn')];
+      const actionsBottom = actions.reduce((bottom,b) => Math.max(bottom,b.getBoundingClientRect().bottom), 0);
+      const buttonsInside = actions.every(b => {
+        const r=b.getBoundingClientRect(), p=panel.getBoundingClientRect();
+        return r.left >= p.left-1 && r.right <= p.right+1;
+      });
+      return {
+        viewport:{width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth},
+        game:rect(game), panel:rect(panel), wallet:rect(wallet), player:rect(player), balance:rect(balance),
+        heading:rect(heading), manager:rect(manage), board:rect(board),
+        boardSquare:!board || Math.abs(board.getBoundingClientRect().width-board.getBoundingClientRect().height)<=2,
+        mortgageStableAcrossTurnPhases, mortgageInsideCenter, mortgageClearOfPurchase, mortgageRect, mortgageBefore, mortgageAfter,
+        walletOverlap:overlap(rect(player),rect(balance)),
+        managerOverlap:overlap(rect(heading),rect(manage)),
+        buttonsInside,
+        actionsBottom,
+        panelScrollWidth:panel.scrollWidth, panelClientWidth:panel.clientWidth
+      };
+    });
+
+    const problems=[];
+    if (metrics.viewport.scrollWidth > c.width + 1) problems.push('page horizontal overflow');
+    if (metrics.walletOverlap) problems.push('wallet player/balance overlap');
+    if (metrics.managerOverlap) problems.push('heading/manager button overlap');
+    if (!metrics.buttonsInside) problems.push('action button outside panel');
+    if (metrics.panel && metrics.panel.right > c.width + 1) problems.push('estate panel outside viewport');
+    if (metrics.board && (metrics.board.x < -1 || metrics.board.right > c.width + 1)) problems.push('board outside viewport');
+    if (!metrics.boardSquare) problems.push('board is not square');
+    if (!metrics.mortgageStableAcrossTurnPhases) problems.push('mortgage button shifts between roll and end-turn states');
+    if (!metrics.mortgageInsideCenter) problems.push('mortgage button escapes the board centre');
+    if (!metrics.mortgageClearOfPurchase) problems.push('mortgage button overlaps purchase controls');
+    if (c.width >= 761 && c.width <= 1100 && metrics.board && metrics.board.width < 320) problems.push('tablet board is too small');
+    if (c.width > 1100 && metrics.actionsBottom > c.height + 1) problems.push('desktop action buttons below viewport');
+    if (pageErrors.length) problems.push('browser JS errors: ' + pageErrors.join(' | '));
+
+    results.push({ case:c.name, metrics, problems, pageErrors });
+    for (const problem of problems) failures.push(c.name + ': ' + problem);
+    await page.close();
+  }
+
+  await browser.close();
+  console.log(JSON.stringify({ results, failures }, null, 2));
+  if (failures.length) process.exit(1);
+})().catch(error => { console.error(error); process.exit(2); });
+
++(1500-i*200)+'</div></div>'
       ).join('');
+
+      // Exercise the mortgage control in both turn phases shown in the report.
+      const actionRow = document.querySelector('#game-screen .action-buttons');
+      actionRow.classList.add('has-mortgage');
+      document.getElementById('mortgage-btn').style.display = 'inline-flex';
+      document.getElementById('mortgage-btn').textContent = 'Заложить (+$90)';
+      document.getElementById('roll-btn').style.display = 'inline-flex';
+      document.getElementById('end-turn-btn').style.display = 'none';
     }, { assets: c.assets });
 
     await page.screenshot({ path: 'screenshots/' + c.name + '.png', fullPage: true });
