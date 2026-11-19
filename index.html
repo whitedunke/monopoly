@@ -2327,93 +2327,67 @@
             }
         }
 
-        /* Final action-row override: older responsive rules must not hide the mortgage control. */
+        /* Final action cluster: keep the turn action and mortgage side-by-side as one centred group. */
         #game-screen .action-buttons {
-            display:grid !important;
-            width:min(100%,560px) !important;
-            grid-template-columns:minmax(0,1fr) !important;
-            align-items:start !important;
-            justify-content:stretch !important;
-            gap:10px !important;
-        }
-        #game-screen .action-buttons.has-mortgage {
-            grid-template-columns:minmax(0,1fr) auto !important;
-        }
-        #game-screen .action-buttons:not(.has-mortgage) .mortgage-action-slot {
-            display:none !important;
-        }
-        #game-screen .turn-action-slot {
-            min-width:0 !important;
             display:flex !important;
+            flex-direction:row !important;
+            flex-wrap:wrap !important;
+            width:fit-content !important;
+            max-width:100% !important;
+            margin:0 auto !important;
+            grid-template-columns:none !important;
+            grid-template-rows:none !important;
             align-items:center !important;
             justify-content:center !important;
-            flex-wrap:wrap !important;
+            gap:12px !important;
+        }
+        #game-screen .center-main > .action-buttons {
+            justify-self:center !important;
+            margin:0 !important;
+        }
+        #game-screen .turn-action-slot {
+            display:flex !important;
+            flex:0 0 140px !important;
+            width:140px !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            align-self:center !important;
+            align-items:center !important;
+            justify-content:center !important;
+            flex-flow:row wrap !important;
             gap:8px !important;
         }
         #game-screen .mortgage-action-slot {
-            grid-column:2 !important;
-            grid-row:1 !important;
-            min-width:0 !important;
             display:flex !important;
-            align-items:flex-start !important;
+            flex:0 0 auto !important;
+            width:auto !important;
+            min-width:0 !important;
+            grid-column:auto !important;
+            grid-row:auto !important;
+            align-self:flex-start !important;
+            align-items:center !important;
             justify-content:center !important;
+        }
+        #game-screen .action-buttons:not(.has-mortgage) .mortgage-action-slot {
+            display:none !important;
         }
         #game-screen .mortgage-action-slot #mortgage-btn {
             display:inline-flex !important;
             width:auto !important;
             min-width:0 !important;
+            margin:0 !important;
             white-space:nowrap !important;
         }
-
-
-        /* Keep the turn controls anchored to the bottom of the board centre.
-           The old flex-centred stack moved whenever the square board changed size. */
-        #game-screen .board-center {
-            position:relative !important;
-        }
-        #game-screen .center-main {
-            position:absolute !important;
-            inset:0 !important;
-            z-index:2 !important;
-            box-sizing:border-box !important;
-            width:100% !important;
-            min-width:0 !important;
-            min-height:0 !important;
-            padding:clamp(8px,1.4vw,16px) !important;
-            display:grid !important;
-            grid-template-columns:minmax(0,1fr) !important;
-            grid-template-rows:auto auto auto auto auto !important;
-            align-content:center !important;
-            align-items:center !important;
-            justify-items:center !important;
-            gap:clamp(4px,.7vh,8px) !important;
-        }
-        #game-screen .center-main > .brand-logo {
-            grid-row:1 !important;
-            align-self:end !important;
-            margin:0 !important;
-        }
-        #game-screen .center-main > #turn-banner {
-            grid-row:2 !important;
-            margin:0 !important;
-        }
-        #game-screen .center-main > .dice-area {
-            grid-row:3 !important;
-            align-self:center !important;
-            margin:0 !important;
-        }
-        #game-screen .center-main > .action-buttons {
-            grid-row:4 !important;
-            align-self:end !important;
-            margin:0 !important;
-        }
-        #game-screen .center-main > .purchase-action {
-            grid-row:5 !important;
-            align-self:start !important;
-            margin:0 !important;
+        @media(max-width:520px) {
+            #game-screen .action-buttons { gap:8px !important; }
+            #game-screen .action-buttons .btn {
+                max-width:100% !important;
+                padding:7px 8px !important;
+                font-size:10px !important;
+            }
         }
 
-</style>
+        </style>
 </head>
 <body>
 
