@@ -76,10 +76,18 @@ const path = require('path');
       const mortgage = document.getElementById('mortgage-btn');
       const turnButton = document.getElementById('roll-btn');
       const endTurnButton = document.getElementById('end-turn-btn');
+      const turnSlot = document.querySelector('#game-screen .turn-action-slot');
+      const turnSlotBefore = rect(turnSlot);
       const before = rect(mortgage);
       turnButton.style.display = 'none';
       endTurnButton.style.display = 'inline-flex';
       const after = rect(mortgage);
+      const turnSlotAfter = rect(turnSlot);
+      const turnSlotStable = !!turnSlotBefore && !!turnSlotAfter &&
+        Math.abs(turnSlotBefore.x-turnSlotAfter.x)<=1 &&
+        Math.abs(turnSlotBefore.y-turnSlotAfter.y)<=1 &&
+        Math.abs(turnSlotBefore.width-turnSlotAfter.width)<=1 &&
+        Math.abs(turnSlotBefore.height-turnSlotAfter.height)<=1;
       const center = rect(document.querySelector('#game-screen .board-center'));
       const diceRect = rect(document.querySelector('#game-screen .dice-area'));
       const actionRowRect = rect(document.querySelector('#game-screen .action-buttons'));
@@ -120,6 +128,7 @@ const path = require('path');
         heading:rect(heading), manager:rect(manage), board:rect(board),
         boardSquare:!board || Math.abs(board.getBoundingClientRect().width-board.getBoundingClientRect().height)<=2,
         mortgageStable, mortgageInsideCenter, mortgageClearOfPurchase, mortgageBefore:before, mortgageAfter:after,
+        turnSlotBefore, turnSlotAfter, turnSlotStable,
         diceRect, actionRowRect, actionGapBelowDice, actionRowStaysNearDice,
         turnSlotRect, mortgageSlotRect, turnMortgageSameRow, turnMortgageGap,
         actionRowCenteredOnDice, actionRowCanFitSingleRow, mortgageAdjacentToTurnAction, actionRowCompact,
@@ -140,6 +149,7 @@ const path = require('path');
     if (metrics.board && (metrics.board.x < -1 || metrics.board.right > c.width + 1)) problems.push('board outside viewport');
     if (!metrics.boardSquare) problems.push('board is not square');
     if (!metrics.mortgageStable) problems.push('mortgage button moves between turn states');
+    if (!metrics.turnSlotStable) problems.push('turn action slot changes size or position between turn states');
     if (!metrics.mortgageInsideCenter) problems.push('mortgage button outside board centre');
     if (!metrics.mortgageClearOfPurchase) problems.push('mortgage button overlaps purchase row');
     if (!metrics.actionRowStaysNearDice) problems.push('action buttons are too far below the dice');
