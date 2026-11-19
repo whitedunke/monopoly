@@ -2718,14 +2718,17 @@
             const legacyIndex = LEGACY_TOKEN_EMOJIS.indexOf(tokenId);
             return legacyIndex >= 0 ? legacyIndex : 0;
         }
+        let pawnRenderSequence = 0;
         function renderPawn(index, color, size = 'board') {
             const safeIndex = Number.isInteger(index) && index >= 0 && index < PAWN_SHAPES.length ? index : 0;
             const safeColor = getSafePlayerColor(color);
             const tokenName = PAWN_NAMES[safeIndex];
-            const metalId = 'pawn-metal-' + safeIndex;
-            const darkId = 'pawn-dark-' + safeIndex;
-            const enamelId = 'pawn-enamel-' + safeIndex;
-            const baseId = 'pawn-base-' + safeIndex;
+            // SVG fragment IDs are document-wide: every rendered instance needs its own set.
+            const renderId = 'pawn-instance-' + (++pawnRenderSequence);
+            const metalId = renderId + '-metal';
+            const darkId = renderId + '-dark';
+            const enamelId = renderId + '-enamel';
+            const baseId = renderId + '-base';
             const shape = PAWN_SHAPES[safeIndex]
                 .replaceAll('__METAL__', 'url(#' + metalId + ')')
                 .replaceAll('__DARK__', 'url(#' + darkId + ')')

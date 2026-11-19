@@ -73,19 +73,28 @@ function runMonopolyMechanicsSuite() {
     assert(new Set(PLAYER_COLORS.slice(0, MAX_PLAYERS)).size === MAX_PLAYERS, 'Player colors must be unique');
   });
 
-  test('Фигурки игроков: 8 уникальных металлических SVG-миниатюр вместо emoji', () => {
+  test('Фигурки игроков: восемь уникальных металлических SVG-миниатюр без emoji', () => {
     assert(TOKEN_IDS.length === MAX_PLAYERS, 'Expected one token ID for each player');
     assert(PAWN_NAMES.length === MAX_PLAYERS, 'Every pawn must have a display name');
     assert(new Set(PAWN_NAMES).size === MAX_PLAYERS, 'Pawn labels must be unique');
     assert(new Set(PAWN_SHAPES).size === MAX_PLAYERS, 'Every pawn must have a distinct silhouette');
+    const rendered = [];
     for (let i = 0; i < MAX_PLAYERS; i++) {
       const markup = renderPawn(i, PLAYER_COLORS[i], 'board');
+      rendered.push(markup);
       assert(markup.includes('<svg viewBox="0 0 64 64"'), 'Pawn ' + i + ' is not rendered as SVG');
       assert(markup.includes('Игровая фигурка: ' + PAWN_NAMES[i]), 'Pawn ' + i + ' has no accessible display name');
-      assert(markup.includes('pawn-metal-' + i), 'Pawn ' + i + ' has no metallic material');
+      assert(/pawn-instance-\\d+-metal/.test(markup), 'Pawn ' + i + ' has no metallic gradient');
       assert(!markup.includes(LEGACY_TOKEN_EMOJIS[i]), 'Legacy emoji leaked into pawn rendering');
       assert(!markup.includes('__'), 'Pawn ' + i + ' has an unresolved material placeholder');
+      assert(getPawnIndex(LEGACY_TOKEN_EMOJIS[i]) === i, 'Legacy saved token is not mapped for player ' + i);
     }
+    const combined = rendered.join('');
+    const ids = [...combined.matchAll(/\\bid="([^"]+)"/g)].map(match => match[1]);
+    assert(ids.length === MAX_PLAYERS * 4, 'Every rendered token must define four local gradients');
+    assert(new Set(ids).size === ids.length, 'SVG gradient IDs collide across rendered player tokens');
+    const references = [...combined.matchAll(/url\\(#([^)]+)\\)/g)].map(match => match[1]);
+    assert(references.every(id => ids.includes(id)), 'A pawn references a missing local SVG gradient');
   });
 
   test('Игровое поле: 40 уникальных клеток', () => {
