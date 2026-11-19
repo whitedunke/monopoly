@@ -38,3 +38,4 @@ jobs:
         env:
           STRICT_MECHANICS: ${{ github.event.inputs.strict == 'true' && '1' || '0' }}
         run: node tests/run-mechanics.cjs
+

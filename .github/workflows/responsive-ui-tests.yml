@@ -1,8 +1,17 @@
 name: Responsive UI browser tests
 on:
   push:
-    branches:
-      - fix/interface-layout-v2
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '.github/ui-layout-check.cjs'
+      - '.github/workflows/responsive-ui-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '.github/ui-layout-check.cjs'
+      - '.github/workflows/responsive-ui-tests.yml'
   workflow_dispatch:
 
 jobs:
@@ -26,3 +35,4 @@ jobs:
           name: responsive-layout-screenshots
           path: screenshots/
           if-no-files-found: ignore
+
