@@ -79,6 +79,10 @@ const path = require('path');
       endTurnButton.style.display = 'inline-flex';
       const after = rect(mortgage);
       const center = rect(document.querySelector('#game-screen .board-center'));
+      const diceRect = rect(document.querySelector('#game-screen .dice-area'));
+      const actionRowRect = rect(document.querySelector('#game-screen .action-buttons'));
+      const actionGapBelowDice = diceRect && actionRowRect ? actionRowRect.y-diceRect.bottom : null;
+      const actionRowStaysNearDice = actionGapBelowDice !== null && actionGapBelowDice >= -1 && actionGapBelowDice <= 56;
       const mortgageRect = rect(mortgage);
       const purchaseRect = rect(document.querySelector('#game-screen .purchase-action'));
       const mortgageStable = !!before && !!after &&
@@ -100,6 +104,7 @@ const path = require('path');
         heading:rect(heading), manager:rect(manage), board:rect(board),
         boardSquare:!board || Math.abs(board.getBoundingClientRect().width-board.getBoundingClientRect().height)<=2,
         mortgageStable, mortgageInsideCenter, mortgageClearOfPurchase, mortgageBefore:before, mortgageAfter:after,
+        diceRect, actionRowRect, actionGapBelowDice, actionRowStaysNearDice,
         walletOverlap:overlap(rect(player),rect(balance)),
         managerOverlap:overlap(rect(heading),rect(manage)),
         buttonsInside,
@@ -119,6 +124,7 @@ const path = require('path');
     if (!metrics.mortgageStable) problems.push('mortgage button moves between turn states');
     if (!metrics.mortgageInsideCenter) problems.push('mortgage button outside board centre');
     if (!metrics.mortgageClearOfPurchase) problems.push('mortgage button overlaps purchase row');
+    if (!metrics.actionRowStaysNearDice) problems.push('action buttons are too far below the dice');
     if (c.width >= 761 && c.width <= 1100 && metrics.board && metrics.board.width < 320) problems.push('tablet board is too small');
     if (c.width > 1100 && metrics.actionsBottom > c.height + 1) problems.push('desktop action buttons below viewport');
     if (pageErrors.length) problems.push('browser JS errors: ' + pageErrors.join(' | '));
