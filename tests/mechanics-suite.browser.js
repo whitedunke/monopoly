@@ -1,7 +1,7 @@
 function runMonopolyMechanicsSuite() {
   const report = { passed: [], failed: [], knownGaps: [] };
   const p = (id, money = 1500, pos = 0, name = id, color = '#3b82f6') => ({
-    id, name, money, pos, color, icon: '🚗', inJail: false, jailTurns: 0, jailCards: []
+    id, name, money, pos, color, icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: []
   });
   function reset(playersInput = [p('p1'), p('p2', 1500, 0, 'Игрок 2', '#ef4444')]) {
     players = playersInput;
