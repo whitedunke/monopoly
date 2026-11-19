@@ -66,11 +66,26 @@ function runMonopolyMechanicsSuite() {
   // Every test starts from an isolated in-memory match. No real P2P connections are opened.
   test('Лобби поддерживает до восьми игроков с уникальными цветами и фишками', () => {
     assert(MAX_PLAYERS === 8, 'Maximum player count should be eight');
-    assert(TOKEN_ICONS.length >= MAX_PLAYERS, 'Not enough token icons for all players');
+    assert(TOKEN_IDS.length >= MAX_PLAYERS, 'Not enough token icons for all players');
     assert(PAWN_SHAPES.length >= MAX_PLAYERS, 'Not enough pawn designs for all players');
     assert(new Set(PAWN_SHAPES.slice(0, MAX_PLAYERS)).size === MAX_PLAYERS, 'Pawn designs must be unique');
     assert(PLAYER_COLORS.length >= MAX_PLAYERS, 'Not enough player colors');
     assert(new Set(PLAYER_COLORS.slice(0, MAX_PLAYERS)).size === MAX_PLAYERS, 'Player colors must be unique');
+  });
+
+  test('Фигурки игроков: 8 уникальных металлических SVG-миниатюр вместо emoji', () => {
+    assert(TOKEN_IDS.length === MAX_PLAYERS, 'Expected one token ID for each player');
+    assert(PAWN_NAMES.length === MAX_PLAYERS, 'Every pawn must have a display name');
+    assert(new Set(PAWN_NAMES).size === MAX_PLAYERS, 'Pawn labels must be unique');
+    assert(new Set(PAWN_SHAPES).size === MAX_PLAYERS, 'Every pawn must have a distinct silhouette');
+    for (let i = 0; i < MAX_PLAYERS; i++) {
+      const markup = renderPawn(i, PLAYER_COLORS[i], 'board');
+      assert(markup.includes('<svg viewBox="0 0 64 64"'), 'Pawn ' + i + ' is not rendered as SVG');
+      assert(markup.includes('Игровая фигурка: ' + PAWN_NAMES[i]), 'Pawn ' + i + ' has no accessible display name');
+      assert(markup.includes('pawn-metal-' + i), 'Pawn ' + i + ' has no metallic material');
+      assert(!markup.includes(LEGACY_TOKEN_EMOJIS[i]), 'Legacy emoji leaked into pawn rendering');
+      assert(!markup.includes('__'), 'Pawn ' + i + ' has an unresolved material placeholder');
+    }
   });
 
   test('Игровое поле: 40 уникальных клеток', () => {
