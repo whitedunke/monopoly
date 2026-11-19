@@ -84,16 +84,16 @@ function runMonopolyMechanicsSuite() {
       rendered.push(markup);
       assert(markup.includes('<svg viewBox="0 0 64 64"'), 'Pawn ' + i + ' is not rendered as SVG');
       assert(markup.includes('Игровая фигурка: ' + PAWN_NAMES[i]), 'Pawn ' + i + ' has no accessible display name');
-      assert(/pawn-instance-\\d+-metal/.test(markup), 'Pawn ' + i + ' has no metallic gradient');
+      assert(/pawn-instance-\d+-metal/.test(markup), 'Pawn ' + i + ' has no metallic gradient');
       assert(!markup.includes(LEGACY_TOKEN_EMOJIS[i]), 'Legacy emoji leaked into pawn rendering');
       assert(!markup.includes('__'), 'Pawn ' + i + ' has an unresolved material placeholder');
       assert(getPawnIndex(LEGACY_TOKEN_EMOJIS[i]) === i, 'Legacy saved token is not mapped for player ' + i);
     }
     const combined = rendered.join('');
-    const ids = [...combined.matchAll(/\\bid="([^"]+)"/g)].map(match => match[1]);
+    const ids = [...combined.matchAll(/id="([^"]+)"/g)].map(match => match[1]);
     assert(ids.length === MAX_PLAYERS * 4, 'Every rendered token must define four local gradients');
     assert(new Set(ids).size === ids.length, 'SVG gradient IDs collide across rendered player tokens');
-    const references = [...combined.matchAll(/url\\(#([^)]+)\\)/g)].map(match => match[1]);
+    const references = [...combined.matchAll(/url\(#([^)]+)\)/g)].map(match => match[1]);
     assert(references.every(id => ids.includes(id)), 'A pawn references a missing local SVG gradient');
   });
 
