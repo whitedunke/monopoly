@@ -9,6 +9,7 @@ const path = require('path');
     { name: 'mobile-370-full', width: 370, height: 800, assets: 12 },
     { name: 'mobile-390-full', width: 390, height: 844, assets: 12 },
     { name: 'mobile-430-full', width: 430, height: 900, assets: 12 },
+    { name: 'viewport-699x507-user-report', width: 699, height: 507, assets: 12 },
     { name: 'tablet-768-full', width: 768, height: 1024, assets: 12 },
     { name: 'tablet-1024-full', width: 1024, height: 768, assets: 12 },
     { name: 'desktop-1366-full', width: 1366, height: 900, assets: 12 },
@@ -82,7 +83,21 @@ const path = require('path');
       const center = rect(document.querySelector('#game-screen .board-center'));
       const diceRect = rect(document.querySelector('#game-screen .dice-area'));
       const actionRowRect = rect(document.querySelector('#game-screen .action-buttons'));
+      const turnSlotRect = rect(document.querySelector('#game-screen .turn-action-slot'));
+      const mortgageSlotRect = rect(document.querySelector('#game-screen .mortgage-action-slot'));
       const actionGapBelowDice = diceRect && actionRowRect ? actionRowRect.y-diceRect.bottom : null;
+      const actionRowCenterX = actionRowRect ? actionRowRect.x + actionRowRect.width/2 : null;
+      const diceCenterX = diceRect ? diceRect.x + diceRect.width/2 : null;
+      const actionRowCenteredOnDice = actionRowCenterX !== null && diceCenterX !== null &&
+        Math.abs(actionRowCenterX-diceCenterX) <= 3;
+      const turnMortgageSameRow = !!turnSlotRect && !!mortgageSlotRect &&
+        Math.abs((turnSlotRect.y+turnSlotRect.height/2)-(mortgageSlotRect.y+mortgageSlotRect.height/2)) <= 2;
+      const turnMortgageGap = turnSlotRect && mortgageSlotRect ? mortgageSlotRect.x-turnSlotRect.right : null;
+      const actionRowCanFitSingleRow = !!turnSlotRect && !!mortgageSlotRect &&
+        turnSlotRect.width+mortgageSlotRect.width+12 <= (center?.width || 0)-48;
+      const mortgageAdjacentToTurnAction = !actionRowCanFitSingleRow ||
+        (turnMortgageSameRow && turnMortgageGap >= -1 && turnMortgageGap <= 18);
+      const actionRowCompact = !!actionRowRect && !!center && actionRowRect.width <= center.width-16;
       const actionRowStaysNearDice = actionGapBelowDice !== null && actionGapBelowDice >= -1 && actionGapBelowDice <= 56;
       const mortgageRect = rect(mortgage);
       const purchaseRect = rect(document.querySelector('#game-screen .purchase-action'));
@@ -106,6 +121,8 @@ const path = require('path');
         boardSquare:!board || Math.abs(board.getBoundingClientRect().width-board.getBoundingClientRect().height)<=2,
         mortgageStable, mortgageInsideCenter, mortgageClearOfPurchase, mortgageBefore:before, mortgageAfter:after,
         diceRect, actionRowRect, actionGapBelowDice, actionRowStaysNearDice,
+        turnSlotRect, mortgageSlotRect, turnMortgageSameRow, turnMortgageGap,
+        actionRowCenteredOnDice, actionRowCanFitSingleRow, mortgageAdjacentToTurnAction, actionRowCompact,
         walletOverlap:overlap(rect(player),rect(balance)),
         managerOverlap:overlap(rect(heading),rect(manage)),
         buttonsInside,
@@ -126,6 +143,9 @@ const path = require('path');
     if (!metrics.mortgageInsideCenter) problems.push('mortgage button outside board centre');
     if (!metrics.mortgageClearOfPurchase) problems.push('mortgage button overlaps purchase row');
     if (!metrics.actionRowStaysNearDice) problems.push('action buttons are too far below the dice');
+    if (!metrics.actionRowCenteredOnDice) problems.push('action group is horizontally off-centre from the dice');
+    if (!metrics.mortgageAdjacentToTurnAction) problems.push('mortgage button is detached to the far right of the turn button');
+    if (!metrics.actionRowCompact) problems.push('action row expands across the board instead of wrapping its buttons');
     if (c.width >= 761 && c.width <= 1100 && metrics.board && metrics.board.width < 320) problems.push('tablet board is too small');
     if (c.width > 1100 && metrics.actionsBottom > c.height + 1) problems.push('desktop action buttons below viewport');
     if (pageErrors.length) problems.push('browser JS errors: ' + pageErrors.join(' | '));
