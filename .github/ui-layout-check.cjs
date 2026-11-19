@@ -50,6 +50,7 @@ const path = require('path');
     // Render the mortgage action so its position can be checked in every viewport.
     await page.evaluate(() => {
       document.querySelector('#game-screen .action-buttons').classList.add('has-mortgage');
+      document.getElementById('roll-btn').textContent = 'Бросить ещё раз 🎲';
       const mortgage = document.getElementById('mortgage-btn');
       mortgage.style.display = 'inline-flex';
       mortgage.textContent = 'Заложить (+$90)';
