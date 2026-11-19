@@ -1167,6 +1167,1204 @@
             #game-screen .mortgage-action-slot #mortgage-btn { padding:7px 8px; }
         }
 
+
+        /* === Responsive classic tabletop board: final layout corrections === */
+        .board-wrapper { min-width:0; min-height:0; }
+        .board { min-width:0; min-height:0; }
+        .cell { min-width:0; min-height:0; }
+        .cell-name {
+            display:-webkit-box;
+            -webkit-box-orient:vertical;
+            -webkit-line-clamp:3;
+            overflow:hidden;
+            overflow-wrap:anywhere;
+            word-break:normal;
+            line-height:1.12;
+            max-width:100%;
+            padding:0 2px;
+            font-size:clamp(7px, .72vw, 10px);
+        }
+        .cell-price { flex:0 0 auto; line-height:1.05; font-size:clamp(7px,.65vw,9px); }
+        .cell-icon { flex:0 0 auto; line-height:1; max-width:100%; }
+        .cell.corner { padding:clamp(3px,.55vw,7px); }
+        .cell.corner .cell-name { -webkit-line-clamp:2; }
+        .board-center { min-width:0; min-height:0; }
+        .center-main { min-width:0; width:100%; }
+        .action-buttons { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
+        .turn-action-slot { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; }
+        /* Mortgage belongs to the property-management panel, not the turn controls. */
+        #game-screen .mortgage-action-slot { display:none !important; }
+        .purchase-action { width:min(100%,420px); max-width:100%; margin:0 auto; }
+        #purchase-hint { max-width:42ch; margin:7px auto 0; text-align:center; line-height:1.35; }
+        .board-deck { width:clamp(54px,7.2vw,86px); height:clamp(82px,10vw,116px); }
+        .deck-stack { min-height:0; }
+        @media (min-width:761px) and (max-width:1100px) {
+            body { height:auto; min-height:100vh; overflow:auto; align-items:flex-start; }
+            #game-screen {
+                width:100%; height:auto; min-height:100vh;
+                grid-template-columns:minmax(0,1fr);
+                grid-template-rows:auto auto auto auto;
+                gap:10px; padding:10px;
+            }
+            #game-screen > header { grid-column:1; min-height:54px; }
+            .board-wrapper {
+                order:1; width:100%; height:auto; min-height:0;
+                overflow:visible; padding:0;
+            }
+            .board {
+                width:min(100%, min( min( calc(100vh - 190px), 720px), calc(100vw - 24px)));
+                height:auto; aspect-ratio:1/1; max-width:720px; max-height:none;
+                flex:none;
+            }
+            .estate-sidebar {
+                order:2; width:100%; max-height:none; overflow:visible;
+                display:grid; grid-template-columns:minmax(0,1fr); padding:0;
+            }
+            .sidebar-right {
+                order:3; display:flex; width:100%; height:auto; max-height:none;
+                overflow:visible; flex-direction:row; flex-wrap:wrap;
+            }
+            .sidebar-right #right-players {
+                display:flex; flex:1 1 260px; flex-direction:row!important;
+                flex-wrap:wrap; align-content:flex-start;
+            }
+            .sidebar-right .player-card { min-width:145px; flex:1 1 145px; }
+            .chat-panel { flex:1 1 260px; min-width:240px; min-height:180px; }
+            .board-center { padding:clamp(8px,1.6vw,16px); }
+            .board-deck { width:clamp(54px,8vw,76px); height:clamp(78px,10vw,104px); }
+        }
+        @media (max-width:760px) {
+            #game-screen { grid-template-columns:minmax(0,1fr); }
+            .board { width:min(100%, min(96vw,680px)); height:auto; aspect-ratio:1/1; }
+            .cell-name { font-size:clamp(6px,1.55vw,9px); -webkit-line-clamp:3; }
+            .cell-price { font-size:clamp(6px,1.35vw,8px); }
+            .board-center { padding:6px; gap:4px; }
+            .brand-logo { font-size:clamp(16px,5vw,30px); letter-spacing:2px; }
+            #turn-banner { font-size:clamp(10px,2.8vw,13px)!important; }
+            .dice-area { gap:10px; margin:5px 0; }
+            .die-wrapper { width:clamp(30px,8vw,48px); height:clamp(30px,8vw,48px); }
+            .board-deck { width:clamp(38px,11vw,58px); height:clamp(58px,16vw,82px); }
+            .deck-name,.deck-count { font-size:6px; }
+            .action-buttons .btn { font-size:10px; padding:7px 9px; }
+            #purchase-hint { font-size:9px; }
+        }
+        @media (max-width:420px) {
+            .board { width:100%; border-width:4px; }
+            .cell-name { font-size:6px; padding:0 1px; }
+            .cell-price { font-size:6px; }
+            .cell.corner .cell-icon { font-size:16px; }
+            .board-deck { width:34px; height:52px; }
+        }
+
+
+        /* === CLASSIC + MINIMAL: board with a dedicated control dashboard === */
+        @media (min-width: 761px) {
+            #game-screen {
+                display:grid;
+                width:100%;
+                height:100vh;
+                min-height:680px;
+                box-sizing:border-box;
+                grid-template-columns:minmax(520px,1.28fr) minmax(340px,.82fr);
+                grid-template-rows:54px minmax(0,1fr);
+                grid-template-areas:
+                    "header header"
+                    "board controls";
+                gap:14px;
+                padding:14px;
+                overflow:hidden;
+                background:#f2eee4;
+            }
+            #game-screen > header { grid-area:header; }
+            #game-screen .board-wrapper {
+                grid-area:board;
+                width:100%;
+                height:100%;
+                min-width:0;
+                min-height:0;
+                padding:0;
+                overflow:hidden;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+            }
+            #game-screen .board {
+                width:auto;
+                height:min(100%, calc(100vw * .66));
+                max-width:100%;
+                max-height:100%;
+                aspect-ratio:1/1;
+                flex:0 1 auto;
+                border:7px solid #315640;
+                border-radius:7px;
+                box-shadow:0 10px 28px rgba(48,55,39,.10);
+                background:#e9e2d4;
+            }
+            #game-screen .sidebar-left {
+                grid-area:controls;
+                display:flex;
+                flex-direction:column;
+                gap:12px;
+                min-width:0;
+                min-height:0;
+                height:100%;
+                overflow-y:auto;
+                overflow-x:hidden;
+                padding:0 4px 4px 0;
+            }
+            #game-screen .estate-dashboard {
+                display:flex;
+                flex-direction:column;
+                width:100%;
+                max-width:none;
+                max-height:none;
+                min-height:0;
+                gap:12px;
+                padding:16px;
+                overflow:visible;
+                border:1px solid #d9d1c2;
+                border-radius:14px;
+                background:#fffdf8;
+                box-shadow:0 4px 16px rgba(55,45,28,.045);
+            }
+            #game-screen .estate-panel-heading {
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+                flex-wrap:wrap;
+            }
+            #game-screen .estate-wallet {
+                background:#f4f0e7;
+                border:1px solid #e5dece;
+                border-radius:10px;
+                padding:12px;
+            }
+            #game-screen .estate-assets { min-height:90px; }
+            #game-screen .estate-property-list {
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:6px;
+                max-height:190px;
+                overflow:auto;
+                padding:2px;
+            }
+            #game-screen .estate-property {
+                min-width:0;
+                border-radius:8px;
+                background:#faf8f2;
+                border:1px solid #e3dccf;
+            }
+            #game-screen .estate-stats {
+                display:flex;
+                flex-wrap:wrap;
+                gap:6px;
+            }
+            #game-screen .estate-stat {
+                background:#f5f1e8;
+                border:1px solid #e5dece;
+                border-radius:7px;
+                padding:6px 8px;
+                font-size:11px;
+            }
+            #game-screen .estate-actions {
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:7px;
+            }
+            #game-screen .estate-actions .btn {
+                min-width:0;
+                min-height:38px;
+                padding:8px 10px;
+                border-radius:8px;
+                box-shadow:none;
+                font-size:12px;
+            }
+            #game-screen .left-player-list {
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:8px;
+            }
+            #game-screen .sidebar-right { display:none; }
+            #game-screen #right-players {
+                display:grid!important;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:8px;
+                min-width:0;
+            }
+            #game-screen .player-card {
+                min-width:0;
+                border:1px solid #ddd5c7;
+                border-radius:9px;
+                background:#fffdf8;
+                box-shadow:none;
+                color:#292820;
+                padding:8px;
+            }
+            #game-screen .player-name,
+            #game-screen .player-seat { color:#292820; }
+            #game-screen .player-money { color:#315640; }
+            #game-screen .chat-panel {
+                min-height:150px;
+                max-height:230px;
+                width:100%;
+                flex:1 1 auto;
+                background:#fffdf8;
+                border:1px solid #ded7ca;
+                border-radius:12px;
+                box-shadow:none;
+                color:#292820;
+                padding:12px;
+            }
+            #game-screen .chat-messages { min-height:70px; }
+            #game-screen .board-center {
+                padding:clamp(8px,1.4vw,16px);
+                gap:8px;
+            }
+            #game-screen .board-deck {
+                width:clamp(48px,6.2vw,76px);
+                height:clamp(72px,8.6vw,100px);
+            }
+            #game-screen .brand-logo {
+                color:#315640;
+                text-shadow:none;
+                letter-spacing:2px;
+            }
+            #game-screen .action-buttons {
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                gap:8px;
+                flex-wrap:wrap;
+            }
+            #game-screen .turn-action-slot {
+                display:flex;
+                justify-content:center;
+                gap:8px;
+                flex-wrap:wrap;
+            }
+            #game-screen .mortgage-action-slot { display:none!important; }
+            #game-screen .purchase-action {
+                width:min(100%,390px);
+                margin:0 auto;
+            }
+            #game-screen #purchase-hint {
+                max-width:38ch;
+                margin:7px auto 0;
+                color:#596b5c;
+                line-height:1.35;
+                text-align:center;
+            }
+        }
+        @media (max-width:760px) {
+            #game-screen {
+                display:grid;
+                width:100%;
+                height:auto;
+                min-height:100vh;
+                grid-template-columns:minmax(0,1fr);
+                grid-template-rows:auto auto auto auto;
+                grid-template-areas:"header" "board" "controls" "social";
+                gap:10px;
+                padding:8px;
+                overflow:visible;
+                background:#f2eee4;
+            }
+            #game-screen > header { grid-area:header; }
+            #game-screen .board-wrapper {
+                grid-area:board;
+                width:100%;
+                height:auto;
+                min-height:0;
+                padding:0;
+                overflow:visible;
+            }
+            #game-screen .board {
+                width:min(100%,96vw);
+                height:auto;
+                max-height:none;
+                aspect-ratio:1/1;
+                border:5px solid #315640;
+                box-shadow:0 7px 20px rgba(48,55,39,.09);
+            }
+            #game-screen .sidebar-left {
+                grid-area:controls;
+                display:flex;
+                flex-direction:column;
+                min-width:0;
+                height:auto;
+                max-height:none;
+                overflow:visible;
+                padding:0;
+            }
+            #game-screen .estate-dashboard {
+                display:flex;
+                flex-direction:column;
+                width:100%;
+                max-height:none;
+                overflow:visible;
+                border-radius:12px;
+                background:#fffdf8;
+                border:1px solid #ded7ca;
+                box-shadow:none;
+            }
+            #game-screen .estate-property-list {
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                max-height:220px;
+                overflow:auto;
+            }
+            #game-screen .estate-actions {
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:7px;
+            }
+            #game-screen .sidebar-right {
+                grid-area:social;
+                display:flex;
+                flex-direction:column;
+                height:auto;
+                max-height:none;
+                overflow:visible;
+                gap:10px;
+            }
+            #game-screen #right-players {
+                display:grid!important;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:8px;
+            }
+            #game-screen .chat-panel {
+                min-height:180px;
+                max-height:280px;
+                background:#fffdf8;
+                color:#292820;
+                border:1px solid #ded7ca;
+                box-shadow:none;
+            }
+            #game-screen .board-center { padding:5px; gap:4px; }
+            #game-screen .board-deck { width:clamp(34px,10vw,54px); height:clamp(50px,14vw,76px); }
+            #game-screen .brand-logo { font-size:clamp(15px,4.5vw,27px); color:#315640; text-shadow:none; }
+            #game-screen .cell-name { font-size:clamp(6px,1.5vw,9px); }
+            #game-screen .cell-price { font-size:clamp(6px,1.3vw,8px); }
+        }
+
+
+        @media (min-width: 761px) {
+            #game-screen .left-player-list,
+            #game-screen #right-players {
+                display:grid!important;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:7px;
+                min-width:0;
+            }
+            #game-screen #right-players { display:contents!important; }
+            #game-screen .player-card {
+                min-width:0;
+                border:1px solid #ddd5c7;
+                border-radius:9px;
+                background:#fffdf8;
+                box-shadow:none;
+                color:#292820;
+                padding:8px;
+            }
+            #game-screen .player-name,
+            #game-screen .player-seat { color:#292820; }
+            #game-screen .player-money { color:#315640; }
+            #game-screen .chat-panel {
+                min-height:130px;
+                max-height:220px;
+                width:100%;
+                flex:1 1 auto;
+                background:#fffdf8;
+                border:1px solid #ded7ca;
+                border-radius:12px;
+                box-shadow:none;
+                color:#292820;
+                padding:12px;
+            }
+        }
+
+
+        /* ==========================================================
+           MONOPOLY — unified Classic / Minimal visual system
+           ========================================================== */
+        :root {
+            --ui-bg: #eee9dc;
+            --ui-surface: #fffdf7;
+            --ui-surface-2: #f7f3e9;
+            --ui-line: #ded6c6;
+            --ui-line-strong: #c9bea9;
+            --ui-ink: #26372d;
+            --ui-muted: #77796f;
+            --ui-green: #28543f;
+            --ui-green-2: #356b50;
+            --ui-green-soft: #e8f0e8;
+            --ui-gold: #bd8b3c;
+            --ui-shadow: 0 12px 32px rgba(48, 55, 39, .08);
+            --ui-radius: 16px;
+        }
+        body {
+            background: var(--ui-bg) !important;
+            color: var(--ui-ink) !important;
+            font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+        }
+        #game-screen {
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(255,255,255,.7), transparent 50%),
+                var(--ui-bg) !important;
+            color: var(--ui-ink) !important;
+        }
+        #game-screen > header {
+            display:flex !important;
+            align-items:center;
+            justify-content:space-between;
+            gap:16px;
+            padding:0 20px !important;
+            min-height:58px !important;
+            border:1px solid var(--ui-line) !important;
+            border-radius:14px !important;
+            background:rgba(255,253,247,.94) !important;
+            box-shadow:0 3px 14px rgba(48,55,39,.045) !important;
+            backdrop-filter:none !important;
+        }
+        #game-screen .header-title {
+            color:var(--ui-green) !important;
+            font-family:Georgia, "Times New Roman", serif !important;
+            font-size:20px !important;
+            font-weight:900 !important;
+            letter-spacing:2.2px !important;
+        }
+        #game-screen .badge-btn {
+            color:var(--ui-green) !important;
+            background:var(--ui-green-soft) !important;
+            border:1px solid #d1dfd1 !important;
+            border-radius:9px !important;
+            padding:9px 13px !important;
+            font-size:12px !important;
+            font-weight:750 !important;
+            box-shadow:none !important;
+        }
+        #game-screen .badge-btn:hover { background:#dce9dd !important; transform:translateY(-1px); }
+
+        @media (min-width: 761px) {
+            #game-screen {
+                width:100% !important;
+                height:100vh !important;
+                min-height:680px !important;
+                box-sizing:border-box !important;
+                display:grid !important;
+                grid-template-columns:minmax(480px,1.18fr) minmax(370px,.82fr) !important;
+                grid-template-rows:58px minmax(0,1fr) !important;
+                grid-template-areas:"header header" "board panel" !important;
+                gap:16px !important;
+                padding:14px 16px 16px !important;
+                overflow:hidden !important;
+            }
+            #game-screen > header { grid-area:header !important; }
+            #game-screen > .board-wrapper {
+                grid-area:board !important;
+                display:flex !important;
+                align-items:center !important;
+                justify-content:center !important;
+                min-width:0 !important;
+                min-height:0 !important;
+                width:100% !important;
+                height:100% !important;
+                padding:0 !important;
+                overflow:hidden !important;
+            }
+            #game-screen > .board-wrapper > .board {
+                width:auto !important;
+                height:min(100%, calc(100vw - 560px)) !important;
+                max-width:100% !important;
+                max-height:100% !important;
+                aspect-ratio:1 !important;
+                flex:0 1 auto !important;
+                border:7px solid var(--ui-green) !important;
+                border-radius:8px !important;
+                background:#e9e2d4 !important;
+                box-shadow:0 12px 32px rgba(48,55,39,.10), inset 0 0 0 2px rgba(255,255,255,.5) !important;
+            }
+            #game-screen > .sidebar-left {
+                grid-area:panel !important;
+                display:flex !important;
+                flex-direction:column !important;
+                gap:12px !important;
+                min-width:0 !important;
+                min-height:0 !important;
+                height:100% !important;
+                overflow-y:auto !important;
+                overflow-x:hidden !important;
+                padding:0 4px 4px 0 !important;
+            }
+            #game-screen .estate-dashboard {
+                display:flex !important;
+                flex-direction:column !important;
+                gap:13px !important;
+                width:100% !important;
+                max-width:none !important;
+                max-height:none !important;
+                min-height:0 !important;
+                padding:17px !important;
+                overflow:visible !important;
+                background:var(--ui-surface) !important;
+                border:1px solid var(--ui-line) !important;
+                border-radius:var(--ui-radius) !important;
+                box-shadow:var(--ui-shadow) !important;
+                color:var(--ui-ink) !important;
+            }
+            #game-screen .estate-panel-heading {
+                padding:0 0 11px !important;
+                border-bottom:1px solid var(--ui-line) !important;
+            }
+            #game-screen .estate-panel-heading strong {
+                color:var(--ui-green) !important;
+                font-family:Georgia,serif !important;
+                font-size:18px !important;
+                letter-spacing:.1px;
+            }
+            #game-screen .estate-panel-heading small,
+            #game-screen .estate-manage-intro { color:var(--ui-muted) !important; }
+            #game-screen .estate-open-manager {
+                background:var(--ui-green) !important;
+                border-radius:9px !important;
+                padding:9px 12px !important;
+                font-size:11px !important;
+                box-shadow:none !important;
+            }
+            #game-screen .estate-wallet {
+                display:grid !important;
+                grid-template-columns:minmax(0,1fr) auto !important;
+                align-items:center !important;
+                gap:12px !important;
+                padding:13px 14px !important;
+                border:1px solid #e4ddcf !important;
+                border-radius:12px !important;
+                background:var(--ui-surface-2) !important;
+            }
+            #game-screen .estate-player { gap:10px !important; }
+            #game-screen .estate-player-token {
+                width:42px !important;
+                height:42px !important;
+                border:1px solid #d8cfbd !important;
+                border-radius:12px !important;
+                background:#fffdf8 !important;
+            }
+            #game-screen #estate-player-name { color:var(--ui-ink) !important; font-weight:800; }
+            #game-screen .estate-balance {
+                color:var(--ui-green) !important;
+                font-family:Georgia,serif !important;
+                font-size:28px !important;
+                font-weight:800 !important;
+                line-height:1 !important;
+            }
+            #game-screen .estate-income { color:#6d806e !important; font-size:10px !important; }
+            #game-screen .estate-assets { min-height:0 !important; }
+            #game-screen .estate-assets-title {
+                color:var(--ui-ink) !important;
+                font-size:13px !important;
+                font-weight:850 !important;
+                margin-bottom:5px;
+            }
+            #game-screen .estate-property-list {
+                display:grid !important;
+                grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+                gap:7px !important;
+                max-height:160px !important;
+                min-height:0 !important;
+                overflow:auto !important;
+                padding:2px !important;
+            }
+            #game-screen .estate-property {
+                display:grid !important;
+                grid-template-columns:5px minmax(0,1fr) auto !important;
+                align-items:center !important;
+                min-height:54px !important;
+                gap:7px !important;
+                padding:7px 8px !important;
+                border:1px solid #e6dfd2 !important;
+                border-radius:9px !important;
+                background:#fffefa !important;
+                box-shadow:none !important;
+            }
+            #game-screen .estate-property.selected {
+                border-color:#8ba68f !important;
+                background:#f0f5ee !important;
+            }
+            #game-screen .estate-property-name { color:var(--ui-ink) !important; font-size:11px !important; }
+            #game-screen .estate-property-price { color:var(--ui-muted) !important; font-size:10px !important; }
+            #game-screen .estate-property-state { color:var(--ui-green) !important; font-size:9px !important; }
+            #game-screen .estate-stats { display:flex !important; flex-wrap:wrap !important; gap:6px !important; }
+            #game-screen .estate-stat {
+                color:#59685b !important;
+                background:#f2f5ef !important;
+                border:1px solid #e0e8dc !important;
+                border-radius:7px !important;
+                padding:6px 8px !important;
+                font-size:10px !important;
+            }
+            #game-screen .estate-actions {
+                display:grid !important;
+                grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+                gap:7px !important;
+            }
+            #game-screen .estate-actions .btn {
+                width:100% !important;
+                min-width:0 !important;
+                min-height:38px !important;
+                padding:8px 10px !important;
+                border:1px solid transparent !important;
+                border-radius:9px !important;
+                box-shadow:none !important;
+                font-size:11px !important;
+                font-weight:750 !important;
+                line-height:1.2 !important;
+                transition:background .15s,border-color .15s,transform .15s !important;
+            }
+            #game-screen .estate-actions .btn:hover:not(:disabled) { transform:translateY(-1px) !important; box-shadow:none !important; }
+            #game-screen .estate-actions .btn.build { grid-column:1/-1 !important; background:var(--ui-green) !important; }
+            #game-screen .estate-actions .btn.sell { background:#f8f1e6 !important; color:#89652e !important; border-color:#eadfc9 !important; }
+            #game-screen .estate-actions .btn.auction { background:#f2eee5 !important; color:#68563c !important; border-color:#e4dac9 !important; }
+            #game-screen .estate-actions .btn.mortgage { background:#f1eef8 !important; color:#6b5a91 !important; border-color:#e3dcf0 !important; }
+            #game-screen .estate-actions .btn.redeem { background:#eaf3ed !important; color:#356a4c !important; border-color:#d8e7dc !important; }
+            #game-screen .estate-actions .btn.trade { background:#edf1f7 !important; color:#4b6487 !important; border-color:#dce4ef !important; }
+            #game-screen .left-player-list,
+            #game-screen #right-players {
+                display:grid !important;
+                grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+                gap:7px !important;
+                min-width:0 !important;
+            }
+            #game-screen #right-players { display:grid !important; }
+            #game-screen .player-card {
+                min-width:0 !important;
+                padding:9px 10px !important;
+                gap:5px !important;
+                border:1px solid var(--ui-line) !important;
+                border-radius:11px !important;
+                background:var(--ui-surface) !important;
+                color:var(--ui-ink) !important;
+                box-shadow:none !important;
+            }
+            #game-screen .player-name,
+            #game-screen .player-seat { color:var(--ui-ink) !important; }
+            #game-screen .player-money { color:var(--ui-green) !important; }
+            #game-screen .player-turn-label { color:var(--ui-green) !important; background:var(--ui-green-soft) !important; }
+            #game-screen .chat-panel {
+                display:flex !important;
+                flex:1 1 auto !important;
+                width:100% !important;
+                min-height:130px !important;
+                max-height:210px !important;
+                padding:12px !important;
+                gap:9px !important;
+                border:1px solid var(--ui-line) !important;
+                border-radius:12px !important;
+                background:var(--ui-surface) !important;
+                color:var(--ui-ink) !important;
+                box-shadow:none !important;
+                backdrop-filter:none !important;
+            }
+            #game-screen .chat-panel > div:first-child { color:var(--ui-green) !important; font-size:11px !important; }
+            #game-screen .chat-messages {
+                background:#f8f6ef !important;
+                border:1px solid #e9e3d7 !important;
+                border-radius:9px !important;
+                color:var(--ui-ink) !important;
+                font-size:11px !important;
+            }
+            #game-screen .chat-input-row input {
+                color:var(--ui-ink) !important;
+                background:#fffefa !important;
+                border:1px solid var(--ui-line) !important;
+                border-radius:8px !important;
+            }
+            #game-screen .chat-input-row input:focus { border-color:#91aa94 !important; }
+            #game-screen .chat-input-row button {
+                background:var(--ui-green) !important;
+                border-radius:8px !important;
+            }
+            #game-screen .board-center {
+                min-width:0 !important;
+                min-height:0 !important;
+                padding:clamp(8px,1.4vw,16px) !important;
+                gap:8px !important;
+                background:#f6f1e6 !important;
+                background-image:radial-gradient(circle at 50% 42%,#fffdf7 0%,#f1eadb 100%) !important;
+                border:1px solid rgba(80,72,52,.12) !important;
+            }
+            #game-screen .brand-logo {
+                color:var(--ui-green) !important;
+                font-family:Georgia,"Times New Roman",serif !important;
+                font-weight:900 !important;
+                letter-spacing:2px !important;
+                text-shadow:none !important;
+            }
+            #game-screen #turn-banner { color:#526a57 !important; font-size:13px !important; }
+            #game-screen .board-deck { filter:drop-shadow(0 5px 7px rgba(64,48,23,.12)); }
+            #game-screen .board-deck .deck-name { color:var(--ui-green) !important; letter-spacing:1px; }
+            #game-screen .board-deck .deck-count { color:#7b7669 !important; }
+            #game-screen .die-wrapper { filter:drop-shadow(0 5px 8px rgba(40,45,35,.13)); }
+            #game-screen .action-buttons {
+                display:flex !important;
+                width:100% !important;
+                justify-content:center !important;
+                align-items:center !important;
+                gap:8px !important;
+                flex-wrap:wrap !important;
+            }
+            #game-screen .turn-action-slot {
+                display:flex !important;
+                align-items:center !important;
+                justify-content:center !important;
+                gap:7px !important;
+                flex-wrap:wrap !important;
+            }
+            #game-screen .action-buttons .btn {
+                width:auto !important;
+                min-height:38px !important;
+                padding:9px 13px !important;
+                border-radius:9px !important;
+                font-size:11px !important;
+                box-shadow:0 3px 8px rgba(37,61,44,.12) !important;
+            }
+            #game-screen #roll-btn { background:var(--ui-green) !important; }
+            #game-screen #end-turn-btn { background:#667568 !important; }
+            #game-screen #buy-btn { background:#356b50 !important; }
+            #game-screen .mortgage-action-slot { display:none !important; }
+            #game-screen .purchase-action { width:min(100%,390px) !important; max-width:100% !important; margin:0 auto !important; }
+            #game-screen #purchase-hint { color:#69786a !important; max-width:38ch; margin:7px auto 0; text-align:center; font-size:10px; line-height:1.35; }
+        }
+        @media (max-width:760px) {
+            body { height:auto !important; min-height:100vh !important; overflow:auto !important; display:block !important; }
+            #game-screen {
+                display:grid !important;
+                width:100% !important;
+                height:auto !important;
+                min-height:100vh !important;
+                grid-template-columns:minmax(0,1fr) !important;
+                grid-template-rows:auto auto auto !important;
+                grid-template-areas:"header" "board" "panel" !important;
+                gap:10px !important;
+                padding:8px !important;
+                overflow:visible !important;
+            }
+            #game-screen > header { grid-area:header !important; position:sticky; top:0; z-index:30; min-height:50px !important; padding:0 12px !important; }
+            #game-screen > .board-wrapper { grid-area:board !important; width:100% !important; height:auto !important; min-height:0 !important; padding:0 !important; overflow:visible !important; }
+            #game-screen > .board-wrapper > .board { width:min(100%,96vw) !important; height:auto !important; max-height:none !important; aspect-ratio:1 !important; border:5px solid var(--ui-green) !important; }
+            #game-screen > .sidebar-left { grid-area:panel !important; display:flex !important; flex-direction:column !important; gap:10px !important; height:auto !important; max-height:none !important; overflow:visible !important; padding:0 !important; }
+            #game-screen .estate-dashboard { display:flex !important; flex-direction:column !important; width:100% !important; max-height:none !important; overflow:visible !important; padding:12px !important; border-radius:12px !important; background:var(--ui-surface) !important; border:1px solid var(--ui-line) !important; box-shadow:none !important; }
+            #game-screen .estate-property-list { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; max-height:220px !important; overflow:auto !important; }
+            #game-screen .estate-actions { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:7px !important; }
+            #game-screen .left-player-list { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:7px !important; }
+            #game-screen #right-players { display:grid !important; }
+            #game-screen .player-card { background:var(--ui-surface) !important; color:var(--ui-ink) !important; border:1px solid var(--ui-line) !important; box-shadow:none !important; }
+            #game-screen .player-name,#game-screen .player-seat { color:var(--ui-ink) !important; }
+            #game-screen .player-money { color:var(--ui-green) !important; }
+            #game-screen .chat-panel { min-height:170px !important; max-height:260px !important; background:var(--ui-surface) !important; color:var(--ui-ink) !important; border:1px solid var(--ui-line) !important; box-shadow:none !important; }
+            #game-screen .chat-messages { background:#f8f6ef !important; color:var(--ui-ink) !important; }
+            #game-screen .chat-input-row input { background:#fffefa !important; color:var(--ui-ink) !important; border:1px solid var(--ui-line) !important; }
+            #game-screen .board-center { padding:5px !important; gap:4px !important; }
+            #game-screen .board-deck { width:clamp(34px,10vw,54px) !important; height:clamp(50px,14vw,76px) !important; }
+            #game-screen .brand-logo { font-size:clamp(15px,4.5vw,27px) !important; }
+            #game-screen .cell-name { font-size:clamp(6px,1.5vw,9px) !important; }
+            #game-screen .cell-price { font-size:clamp(6px,1.3vw,8px) !important; }
+        }
+        @media (min-width:761px) and (max-width:1100px) {
+            #game-screen { grid-template-columns:minmax(400px,1.05fr) minmax(320px,.95fr) !important; }
+            #game-screen > .board-wrapper > .board { height:min(100%,calc(100vw - 450px)) !important; }
+        }
+
+
+        /* Shared component polish: dialogs, forms, scrolling and focus states */
+        .modal-overlay {
+            background:rgba(35,48,39,.48) !important;
+            backdrop-filter:blur(7px) !important;
+        }
+        .modal-content {
+            background:#fffdf7 !important;
+            color:#29382e !important;
+            border:1px solid #ddd4c2 !important;
+            border-radius:17px !important;
+            box-shadow:0 24px 70px rgba(32,43,34,.22) !important;
+            padding:24px !important;
+        }
+        .modal-title {
+            color:#28543f !important;
+            font-family:Georgia,"Times New Roman",serif !important;
+            font-size:22px !important;
+            margin-bottom:18px !important;
+        }
+        .modal-content p,
+        .modal-content label,
+        .modal-content h4 { color:#59675b !important; }
+        .modal-content input,
+        .modal-content select,
+        .modal-content textarea,
+        .input-group input {
+            color:#29382e !important;
+            background:#faf8f1 !important;
+            border:1px solid #ddd5c6 !important;
+            border-radius:9px !important;
+            outline:none !important;
+        }
+        .modal-content input:focus,
+        .modal-content select:focus,
+        .modal-content textarea:focus,
+        .input-group input:focus {
+            border-color:#88a28b !important;
+            box-shadow:0 0 0 3px rgba(53,107,80,.10) !important;
+        }
+        .modal-content .btn {
+            background:#28543f !important;
+            color:#fff !important;
+            border:0 !important;
+            border-radius:9px !important;
+            box-shadow:none !important;
+        }
+        .modal-content .btn-secondary {
+            background:#f0ede5 !important;
+            color:#536154 !important;
+            border:1px solid #e0d9cb !important;
+        }
+        .trade-col {
+            background:#f7f4ec !important;
+            border:1px solid #e5dece !important;
+            border-radius:11px !important;
+        }
+        .trade-col h4 { color:#28543f !important; }
+        .prop-list label {
+            color:#344238 !important;
+            background:#fffdf8 !important;
+            border:1px solid #e5dece !important;
+            border-radius:8px !important;
+        }
+        .prop-list label:hover { background:#eef4ec !important; }
+        .prop-list input { accent-color:#356b50 !important; }
+        .drawn-card-overlay { background:rgba(34,48,38,.58) !important; }
+        .drawn-card {
+            background:#fffdf7 !important;
+            color:#29382e !important;
+            border:1px solid #ddd4c2 !important;
+            box-shadow:0 24px 70px rgba(32,43,34,.25) !important;
+        }
+        .drawn-card .btn { background:#28543f !important; box-shadow:none !important; }
+        #game-screen button:focus-visible,
+        #game-screen input:focus-visible,
+        .modal-content button:focus-visible {
+            outline:3px solid rgba(189,139,60,.42) !important;
+            outline-offset:2px !important;
+        }
+        #game-screen ::-webkit-scrollbar { width:7px; height:7px; }
+        #game-screen ::-webkit-scrollbar-track { background:transparent; }
+        #game-screen ::-webkit-scrollbar-thumb { background:#d5cdbd; border-radius:10px; }
+        #game-screen ::-webkit-scrollbar-thumb:hover { background:#b9ad98; }
+        @media (min-width:761px) and (max-width:900px) {
+            #game-screen {
+                height:auto !important;
+                min-height:100vh !important;
+                grid-template-columns:minmax(0,1fr) !important;
+                grid-template-rows:58px auto auto !important;
+                grid-template-areas:"header" "board" "panel" !important;
+                overflow:visible !important;
+            }
+            #game-screen > .board-wrapper { height:auto !important; overflow:visible !important; }
+            #game-screen > .board-wrapper > .board {
+                width:min(100%,680px) !important;
+                height:auto !important;
+                aspect-ratio:1 !important;
+            }
+            #game-screen > .sidebar-left { height:auto !important; overflow:visible !important; }
+        }
+
+
+        /* Entry screen follows the same tabletop identity */
+        #lobby {
+            width:min(92vw,430px) !important;
+            padding:34px !important;
+            border:1px solid var(--ui-line) !important;
+            border-radius:20px !important;
+            background:var(--ui-surface) !important;
+            color:var(--ui-ink) !important;
+            box-shadow:0 22px 60px rgba(48,55,39,.13) !important;
+            backdrop-filter:none !important;
+        }
+        #lobby h1 {
+            color:var(--ui-green) !important;
+            font-family:Georgia,"Times New Roman",serif !important;
+            font-size:34px !important;
+            letter-spacing:2px !important;
+            text-shadow:none !important;
+            margin-bottom:24px !important;
+        }
+        #lobby .input-group { margin-bottom:17px !important; }
+        #lobby .input-group label {
+            color:#6c756b !important;
+            font-size:11px !important;
+            letter-spacing:.8px !important;
+        }
+        #lobby .input-group input {
+            color:#29382e !important;
+            background:#faf8f1 !important;
+            border:1px solid #ddd5c6 !important;
+            border-radius:10px !important;
+        }
+        #lobby .btn {
+            width:100% !important;
+            min-height:44px !important;
+            border-radius:10px !important;
+            background:var(--ui-green) !important;
+            box-shadow:none !important;
+            font-size:13px !important;
+        }
+        #lobby .btn-secondary {
+            color:#536154 !important;
+            background:#f0ede5 !important;
+            border:1px solid #e0d9cb !important;
+        }
+        #game-screen .cell {
+            background:#fffdf8 !important;
+            color:#29382e !important;
+            border-color:#d9d1c2 !important;
+        }
+        #game-screen .cell:hover {
+            z-index:8;
+            transform:scale(1.025) !important;
+            box-shadow:0 5px 12px rgba(44,53,39,.13) !important;
+            border-color:#a9b7a4 !important;
+        }
+        #game-screen .cell-name { color:#29382e !important; font-weight:800 !important; }
+        #game-screen .cell-price { color:#6f7168 !important; font-weight:750 !important; }
+        #game-screen .cell-color-bar { border-bottom:1px solid rgba(40,45,35,.14) !important; }
+
+
+        /* === Game feel: restrained tabletop motion and clear feedback === */
+        .cell { transition:background-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+        .cell:hover { z-index:3; background:#fffdf6; box-shadow:inset 0 0 0 2px rgba(49,86,64,.24); }
+        .cell.active-landing { box-shadow:inset 0 0 0 2px rgba(49,86,64,.46); }
+        .cell.active-landing::after { content:""; position:absolute; inset:3px; border:1px solid rgba(49,86,64,.18); border-radius:3px; pointer-events:none; }
+        .board-token .pawn { transform-origin:50% 85%; }
+        
+        @keyframes pawnArrival { 0%{transform:translateY(-22px) scale(.78);opacity:.35} 62%{transform:translateY(2px) scale(1.12);opacity:1} 82%{transform:translateY(-3px) scale(.98)} 100%{transform:translateY(0) scale(1)} }
+        .die.die-landed { animation:dieLand .48s cubic-bezier(.2,.8,.2,1); }
+        @keyframes dieLand { 0%{transform:translateY(-8px) scale(1.08)} 55%{transform:translateY(2px) scale(.96)} 100%{transform:translateY(0) scale(1)} }
+        .drawn-card-overlay { opacity:0; transition:opacity .2s ease; }
+        .drawn-card-overlay[style*="display: flex"] { opacity:1; }
+        .drawn-card { transform:translateY(16px) scale(.96); transition:transform .28s cubic-bezier(.2,.8,.2,1); }
+        .drawn-card-overlay[style*="display: flex"] .drawn-card { transform:translateY(0) scale(1); }
+        .estate-property { transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease; }
+        .estate-property:active { transform:scale(.985); }
+        .game-toast-stack { position:fixed; z-index:180; top:18px; right:18px; display:flex; flex-direction:column; gap:9px; width:min(360px,calc(100vw - 28px)); pointer-events:none; }
+        .game-toast { display:flex; align-items:center; gap:11px; padding:12px 14px; border:1px solid #d9d1c2; border-radius:12px; background:rgba(255,253,248,.97); color:#29382e; box-shadow:0 12px 34px rgba(38,48,37,.16); opacity:0; transform:translateX(18px); transition:opacity .22s ease,transform .22s ease; }
+        .game-toast.is-visible { opacity:1; transform:translateX(0); }
+        .game-toast-mark { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; border-radius:9px; background:#e9efe7; color:#315640; font-weight:900; }
+        .game-toast-body { display:flex; flex-direction:column; gap:2px; min-width:0; }
+        .game-toast-body strong { font:800 12px Inter,Arial,sans-serif; color:#315640; }
+        .game-toast-body span { font:500 12px/1.35 Inter,Arial,sans-serif; color:#62675e; overflow-wrap:anywhere; }
+        .chronicle-line { padding:7px 8px; border-bottom:1px solid #ece6db; border-radius:5px; color:#5d6259; font-size:12px; line-height:1.4; animation:chronicleIn .22s ease both; }
+        .chronicle-name { color:#315640; font-weight:800; }
+        @keyframes chronicleIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+        .property-detail-overlay { display:none; position:fixed; inset:0; z-index:160; align-items:center; justify-content:center; padding:18px; background:rgba(30,43,34,.48); backdrop-filter:blur(5px); opacity:0; transition:opacity .18s ease; }
+        .property-detail-overlay.is-open { opacity:1; }
+        .property-detail-card { width:min(420px,100%); max-height:min(88vh,720px); overflow:auto; position:relative; padding:25px 24px 22px; border:1px solid #d9d1c2; border-radius:18px; background:#fffdf7; color:#29382e; box-shadow:0 26px 80px rgba(24,37,27,.28); transform:translateY(12px) scale(.98); transition:transform .22s cubic-bezier(.2,.8,.2,1); }
+        .property-detail-overlay.is-open .property-detail-card { transform:translateY(0) scale(1); }
+        .property-detail-close { position:absolute; top:10px; right:12px; width:32px; height:32px; border:0; border-radius:50%; background:#f0ede5; color:#526052; font-size:23px; cursor:pointer; }
+        .property-detail-color { height:18px; margin:0 0 17px; border-radius:7px; background:#315640; box-shadow:inset 0 1px 0 #ffffff80; }
+        .property-detail-kicker { color:#8b806c; font-size:10px; font-weight:900; letter-spacing:2px; }
+        .property-detail-card h2 { margin:5px 34px 7px 0; color:#294b3a; font:700 27px/1.12 Georgia,"Times New Roman",serif; }
+        .property-detail-price { color:#315640; font-size:16px; font-weight:900; margin-bottom:5px; }
+        .property-detail-owner { color:#7a766b; font-size:12px; font-weight:700; margin-bottom:16px; }
+        .property-detail-rents { display:flex; flex-direction:column; gap:0; padding:8px 12px; border:1px solid #e7e0d4; border-radius:10px; background:#faf8f2; }
+        .property-rent-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #e9e3d8; color:#62675e; font-size:12px; }
+        .property-rent-row:last-child { border-bottom:0; }
+        .property-rent-row strong { color:#315640; font-size:12px; }
+        .property-detail-footer { margin:12px 0 16px; color:#898273; font-size:11px; line-height:1.45; }
+        .property-detail-action { width:100%; min-height:43px; border:0; border-radius:10px; background:#315640; color:#fff; font-size:13px; font-weight:800; cursor:pointer; transition:background .16s,transform .16s; }
+        .property-detail-action:hover { background:#254632; }
+        .property-detail-action:active { transform:scale(.985); }
+        @media(max-width:600px) { .game-toast-stack { top:8px; right:8px; width:min(340px,calc(100vw - 16px)); } .property-detail-card { padding:21px 18px 18px; } }
+        @media(prefers-reduced-motion:reduce) {
+            .board-token.pawn-arrive .pawn,.die.die-landed,.chronicle-line { animation:none!important; }
+            .game-toast,.property-detail-overlay,.property-detail-card,.drawn-card { transition:none!important; }
+        }
+
+
+        /* Dice: calm, readable roll; no flashing faces or uncontrolled rotation */
+        #game-screen .die {
+            backface-visibility:hidden;
+            transform:translateZ(0);
+            transition:box-shadow .18s ease;
+            will-change:transform;
+        }
+        #game-screen .die.rolling {
+            animation:diceLift .75s cubic-bezier(.22,.72,.28,1) both !important;
+            filter:none !important;
+        }
+        #game-screen .die-wrapper.rolling .die-shadow {
+            animation:diceShadow .75s ease both !important;
+        }
+        #game-screen .die.die-landed {
+            animation:diceSettle .22s ease-out both !important;
+        }
+        #game-screen .die-wrapper.rolling {
+            filter:none !important;
+        }
+        @keyframes diceLift {
+            0% { transform:translateY(0) scale(1); }
+            28% { transform:translateY(-7px) scale(1.025); }
+            72% { transform:translateY(-3px) scale(1.01); }
+            100% { transform:translateY(0) scale(1); }
+        }
+        @keyframes diceShadow {
+            0%,100% { opacity:.30; transform:scaleX(1); }
+            35% { opacity:.16; transform:scaleX(.78); }
+        }
+        @keyframes diceSettle {
+            0% { transform:translateY(-2px); }
+            100% { transform:translateY(0); }
+        }
+        @media(prefers-reduced-motion:reduce) {
+            #game-screen .die.rolling,
+            #game-screen .die.die-landed,
+            #game-screen .die-wrapper.rolling .die-shadow {
+                animation:none !important;
+            }
+        }
+
+
+        /* Purchase and construction feedback: subtle tabletop highlights */
+        #board .cell.is-purchased {
+            animation:propertyPurchased 1.15s ease both;
+            z-index:12;
+        }
+        #board .cell.is-building {
+            animation:propertyBuilding .9s ease both;
+            z-index:12;
+        }
+        #board .cell.is-purchased::before,
+        #board .cell.is-building::before {
+            content:"";
+            position:absolute;
+            inset:3px;
+            border:2px solid #b08a45;
+            border-radius:4px;
+            pointer-events:none;
+            animation:propertyOutline .9s ease both;
+            z-index:15;
+        }
+        .buildings-layer.building-pop .house,
+        .buildings-layer.building-pop .hotel {
+            animation:buildingAppear .48s cubic-bezier(.2,.8,.2,1) both;
+            transform-origin:50% 100%;
+        }
+        @keyframes propertyPurchased {
+            0% { box-shadow:inset 0 0 0 0 rgba(176,138,69,0); }
+            25% { box-shadow:inset 0 0 0 3px rgba(176,138,69,.75); background:#fff7df; }
+            100% { box-shadow:inset 0 0 0 0 rgba(176,138,69,0); }
+        }
+        @keyframes propertyBuilding {
+            0% { background:#fffdf8; }
+            30% { background:#edf3e9; box-shadow:inset 0 0 0 3px rgba(49,86,64,.45); }
+            100% { background:transparent; box-shadow:none; }
+        }
+        @keyframes propertyOutline {
+            0% { opacity:0; transform:scale(.94); }
+            25% { opacity:1; transform:scale(1); }
+            100% { opacity:0; transform:scale(1.04); }
+        }
+        @keyframes buildingAppear {
+            0% { opacity:0; transform:translateY(8px) scale(.65); }
+            70% { opacity:1; transform:translateY(-2px) scale(1.12); }
+            100% { opacity:1; transform:translateY(0) scale(1); }
+        }
+        @media(prefers-reduced-motion:reduce) {
+            #board .cell.is-purchased,#board .cell.is-building,
+            #board .cell.is-purchased::before,#board .cell.is-building::before,
+            .buildings-layer.building-pop .house,.buildings-layer.building-pop .hotel { animation:none!important; }
+        }
+
+
+        .finance-panel{padding:12px;border:1px solid #e4ddcf;border-radius:12px;background:#fffdf8;display:flex;flex-direction:column;gap:9px}
+        .finance-panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#315640;font-size:12px}
+        .finance-panel-head span{color:#999080;font-size:9px}
+        .finance-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+        .finance-metrics>div{min-width:0;padding:8px 7px;border-radius:8px;background:#f4f1e9;display:flex;flex-direction:column;gap:4px}
+        .finance-metrics small{font-size:9px;color:#837d70}.finance-metrics strong{font-size:13px;color:#294b3b;overflow-wrap:anywhere}
+        .finance-leaderboard{display:flex;flex-direction:column;gap:4px}
+        .finance-rank-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:6px;padding:5px 7px;border-bottom:1px solid #eee8dd;font-size:10px}
+        .finance-rank-row span:first-child{color:#9b8966;font-weight:900}.finance-rank-row span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5c6258}.finance-rank-row strong{color:#315640;font-size:10px}
+        .finance-history-title{font-size:10px;font-weight:900;color:#68675e;margin-top:2px}
+        .finance-history{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow:auto;color:#9a9386;font-size:10px}
+        .finance-history-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #f0ebe2}
+        .finance-history-row span{display:flex;flex-direction:column;gap:2px;min-width:0}.finance-history-row b{font-size:10px;color:#52634f}.finance-history-row small{font-size:9px;line-height:1.3;color:#8a8579;overflow-wrap:anywhere}.finance-history-row>strong{font-size:10px;color:#315640;white-space:nowrap}
+        .final-results-overlay{position:fixed;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(25,38,29,.66);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+        .final-results-overlay.is-open{opacity:1;visibility:visible}
+        .final-results-card{width:min(520px,100%);max-height:88vh;overflow:auto;padding:28px;border:1px solid #d9d0bf;border-radius:20px;background:#fffdf7;color:#29382e;text-align:center;box-shadow:0 28px 90px #101a12aa;transform:translateY(15px) scale(.98);transition:transform .25s}
+        .final-results-overlay.is-open .final-results-card{transform:none}
+        .final-results-kicker{font-size:9px;letter-spacing:2px;font-weight:900;color:#9b8966}.final-results-trophy{font-size:48px;color:#b08a45;margin:8px 0}
+        .final-results-card h2{font:700 27px Georgia,serif;color:#315640;margin:0 0 7px}.final-results-card p{font-size:12px;color:#77756d;margin:0 0 17px}
+        .final-results-ranking{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;text-align:left}
+        .final-rank-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e9e2d6;border-radius:10px;background:#faf8f2}
+        .final-rank-row>span{color:#a3864e;font-weight:900}.final-rank-row>div{display:flex;flex-direction:column;gap:3px;min-width:0}.final-rank-row b{font-size:12px;color:#315640}.final-rank-row small{font-size:10px;color:#888174}.final-rank-row>strong{font-size:12px;color:#315640}
+        .final-results-card button{width:100%;min-height:43px;border:0;border-radius:10px;background:#315640;color:white;font-weight:800;cursor:pointer}
+        @media(prefers-reduced-motion:reduce){.final-results-overlay,.final-results-card{transition:none!important}}
+
+        /* Keep the board square after the legacy desktop/tablet height constraints. */
+        @media (min-width:1101px) {
+            #game-screen > .board-wrapper > .board {
+                width:min(100%,calc(100vh - 100px),calc(100vw - 620px),900px) !important;
+                height:auto !important;
+                aspect-ratio:1 / 1 !important;
+                flex:0 0 auto !important;
+            }
+        }
+        @media (min-width:761px) and (max-width:1100px) {
+            #game-screen > .board-wrapper > .board {
+                width:min(100%,calc(100vh - 90px),calc(100vw - 340px)) !important;
+                height:auto !important;
+                aspect-ratio:1 / 1 !important;
+                flex:0 0 auto !important;
+            }
+        }
+
+        /* Final action-row override: older responsive rules must not hide the mortgage control. */
+        #game-screen .action-buttons {
+            display:grid !important;
+            width:min(100%,560px) !important;
+            grid-template-columns:minmax(0,1fr) !important;
+            align-items:start !important;
+            justify-content:stretch !important;
+            gap:10px !important;
+        }
+        #game-screen .action-buttons.has-mortgage {
+            grid-template-columns:minmax(0,1fr) auto !important;
+        }
+        #game-screen .action-buttons:not(.has-mortgage) .mortgage-action-slot {
+            display:none !important;
+        }
+        #game-screen .turn-action-slot {
+            min-width:0 !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            flex-wrap:wrap !important;
+            gap:8px !important;
+        }
+        #game-screen .mortgage-action-slot {
+            grid-column:2 !important;
+            grid-row:1 !important;
+            min-width:0 !important;
+            display:flex !important;
+            align-items:flex-start !important;
+            justify-content:center !important;
+        }
+        #game-screen .mortgage-action-slot #mortgage-btn {
+            display:inline-flex !important;
+            width:auto !important;
+            min-width:0 !important;
+            white-space:nowrap !important;
+        }
+
 </style>
 </head>
 <body>
@@ -1199,6 +2397,17 @@
                             <div class="estate-player"><div class="estate-player-token" id="estate-token">🎩</div><div><div id="estate-player-name">Игрок</div><small style="color:#68778b">Ваш капитал</small></div></div>
                             <div><div class="estate-balance" id="estate-balance">$0</div><div class="estate-income" id="estate-income">▲ $200 за круг</div></div>
                         </div>
+                        <section class="finance-panel">
+                            <div class="finance-panel-head"><strong>Финансовая сводка</strong><span id="finance-round-label">Текущая партия</span></div>
+                            <div class="finance-metrics">
+                                <div><small>Чистый капитал</small><strong id="finance-net-worth">$0</strong></div>
+                                <div><small>Стоимость активов</small><strong id="finance-assets-value">$0</strong></div>
+                                <div><small>Долги</small><strong id="finance-debt-value">$0</strong></div>
+                            </div>
+                            <div class="finance-leaderboard" id="finance-leaderboard"></div>
+                            <div class="finance-history-title">Последние операции</div>
+                            <div class="finance-history" id="finance-history"><span>Операций пока нет</span></div>
+                        </section>
                         <div class="estate-assets">
                             <div class="estate-assets-title" id="estate-assets-title">Ваше имущество (0 объектов)</div><div class="estate-manage-intro">Выберите улицу, чтобы посмотреть строительство, залог и доступные действия.</div>
                             <div class="estate-property-list" id="estate-property-list"><span style="color:#777">Пока нет недвижимости</span></div>
@@ -1217,7 +2426,17 @@
                             <button class="btn redeem" id="estate-redeem-btn" onclick="redeemSelected()" disabled>⌂ Выкупить</button>
                             <button class="btn trade" id="estate-trade-btn" onclick="openTradeModal()" disabled>⇄ Обмен</button>
                         </div>
-                    </section><div id="left-players" class="left-player-list"></div></div>
+                    </section><div id="left-players" class="left-player-list"></div>
+            <div id="right-players" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            <div class="chat-panel">
+                <div style="font-size: 13px; font-weight: 800; color: #94a3b8; letter-spacing: 1px;">ХРОНИКА</div>
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input-row">
+                    <input type="text" id="chat-input" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendChat()">
+                    <button onclick="sendChat()">➤</button>
+                </div>
+            </div>
+        </div>
 
         <div class="board-wrapper">
             <div class="board" id="board">
@@ -1273,17 +2492,29 @@
             </div>
         </div>
 
-        <div class="sidebar-right">
-            <div id="right-players" style="display: flex; flex-direction: column; gap: 12px;"></div>
-            <div class="chat-panel">
-                <div style="font-size: 13px; font-weight: 800; color: #94a3b8; letter-spacing: 1px;">ХРОНИКА</div>
-                <div class="chat-messages" id="chat-messages"></div>
-                <div class="chat-input-row">
-                    <input type="text" id="chat-input" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendChat()">
-                    <button onclick="sendChat()">➤</button>
-                </div>
-            </div>
-        </div>
+
+    </div>
+
+    <div class="final-results-overlay" id="final-results-overlay" role="dialog" aria-modal="true" aria-labelledby="final-results-title">
+        <section class="final-results-card">
+            <div class="final-results-kicker">ИГРА ЗАВЕРШЕНА</div><div class="final-results-trophy">♛</div>
+            <h2 id="final-results-title">Победа!</h2><p id="final-results-subtitle">Итоги партии</p>
+            <div id="final-results-ranking" class="final-results-ranking"></div>
+            <button type="button" onclick="closeFinalResults()">Закрыть результаты</button>
+        </section>
+    </div>
+    <div class="property-detail-overlay" id="property-detail-overlay" role="dialog" aria-modal="true" aria-labelledby="property-detail-title" onclick="if(event.target===this)closePropertyDetail()">
+        <section class="property-detail-card">
+            <button class="property-detail-close" type="button" aria-label="Закрыть" onclick="closePropertyDetail()">×</button>
+            <div class="property-detail-color" id="property-detail-color"></div>
+            <div class="property-detail-kicker">КАРТОЧКА СОБСТВЕННОСТИ</div>
+            <h2 id="property-detail-title">Название улицы</h2>
+            <div class="property-detail-price" id="property-detail-price"></div>
+            <div class="property-detail-owner" id="property-detail-owner"></div>
+            <div class="property-detail-rents" id="property-detail-rents"></div>
+            <div class="property-detail-footer" id="property-detail-footer"></div>
+            <button class="property-detail-action" id="property-detail-action" type="button" onclick="usePropertyDetail()">Выбрать объект</button>
+        </section>
     </div>
 
     <div class="drawn-card-overlay" id="drawn-card-overlay" role="dialog" aria-modal="true" aria-labelledby="drawn-card-heading">
@@ -1359,8 +2590,9 @@
 
     <script>
         // Иконки для фишек игроков
-        const TOKEN_ICONS = ['🚗', '🎩', '🐕', '🚢', '👢', '🐈'];
-        const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899'];
+        const TOKEN_ICONS = ['🚗', '🎩', '🐕', '🚢', '👢', '🐈', '🦆', '🚲'];
+        const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#84cc16'];
+        const MAX_PLAYERS = 8;
         // Объёмные фишки: автомобиль, шляпа, собака, корабль, ботинок и кошка.
         const PAWN_SHAPES = [
             '<path d="M12 37h40l-3-12a6 6 0 0 0-6-5H23a7 7 0 0 0-6 4l-5 13Z"/><path d="M18 24h24l5 10H13l5-10Z" opacity=".42"/><circle cx="21" cy="39" r="5" fill="#263238"/><circle cx="44" cy="39" r="5" fill="#263238"/><path d="M22 20l4-7h14l5 7" fill="none" stroke="currentColor" stroke-width="3"/>',
@@ -1368,11 +2600,18 @@
             '<path d="M18 30c0-7 6-12 14-12 5 0 9 2 12 6l7 2 3 7-6 5H22l-7-4 3-4Z"/><path d="M27 20l-2-8 9 5 7-4 1 10"/><circle cx="43" cy="27" r="1.8" fill="#263238"/><path d="M21 36v8m12-7v8m12-8v8" stroke="#263238" stroke-width="4" stroke-linecap="round"/>',
             '<path d="M10 34h44l-7 12H19L10 34Z"/><path d="M31 12v22H17l14-22Z"/><path d="M34 17l14 17H34V17Z" opacity=".55"/><path d="M31 10v-3" stroke="currentColor" stroke-width="3"/>',
             '<path d="M23 12h14v18c0 5 4 8 10 10l5 3v6H13v-7c0-4 3-7 7-10l3-5V12Z"/><path d="M22 43h28" stroke="#263238" stroke-width="3" opacity=".55"/><path d="M24 17h12" stroke="#fff" stroke-width="2" opacity=".55"/>',
-            '<path d="M18 27l5-15 9 9 10-9 5 16c5 4 6 12 1 17-8 8-27 8-35 0-5-5-3-14 5-18Z"/><path d="M23 14l2 11m15-11-2 11" stroke="#fff" stroke-width="2" opacity=".55"/><circle cx="27" cy="34" r="2" fill="#263238"/><circle cx="39" cy="34" r="2" fill="#263238"/><path d="M30 40q3 3 6 0" fill="none" stroke="#263238" stroke-width="2" stroke-linecap="round"/>'
+            '<path d="M18 27l5-15 9 9 10-9 5 16c5 4 6 12 1 17-8 8-27 8-35 0-5-5-3-14 5-18Z"/><path d="M23 14l2 11m15-11-2 11" stroke="#fff" stroke-width="2" opacity=".55"/><circle cx="27" cy="34" r="2" fill="#263238"/><circle cx="39" cy="34" r="2" fill="#263238"/><path d="M30 40q3 3 6 0" fill="none" stroke="#263238" stroke-width="2" stroke-linecap="round"/>',
+            '<path d="M12 39c0-7 6-12 14-12 5 0 9 2 12 6l6-1 7 5-3 5c-4 4-11 6-20 6h-6c-6 0-10-3-10-9Z"/><path d="M18 30l-3-7 9 4m12 0 4-7 5 8"/><path d="M44 32l10 2-8 5Z" fill="#d69a32" stroke="#8b5a2b"/><circle cx="40" cy="30" r="1.8" fill="#263238"/><path d="M22 39q8-7 16 0" fill="none" stroke="#d9e2d9" stroke-width="2"/><path d="M17 43q-5 4-9 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
+            '<circle cx="17" cy="42" r="9" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="42" r="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M17 42l11-18 10 18H17l9-12h13l9 12M28 24h-7m17 18 6-18m-8 0h10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="28" cy="24" r="3" fill="#d9e2d9"/><circle cx="38" cy="42" r="3" fill="#d9e2d9"/>'
         ];
+        function getSafePlayerColor(color) {
+            return PLAYER_COLORS.includes(color) ? color : PLAYER_COLORS[0];
+        }
         function renderPawn(index, color, size = 'board') {
-            const shape = PAWN_SHAPES[(index >= 0 ? index : 0) % PAWN_SHAPES.length];
-            return '<span class="pawn pawn-' + size + '" style="--pawn-color:' + color + '" aria-label="Фишка игрока"><svg viewBox="0 0 64 64" role="img" aria-hidden="true"><ellipse cx="32" cy="53" rx="23" ry="6" fill="#17251c" opacity=".22"/><path d="M10 45q0-5 22-5t22 5v5q0 6-22 6T10 50v-5Z" fill="#243b2e" opacity=".65"/><ellipse cx="32" cy="44" rx="22" ry="7" fill="var(--pawn-color)" stroke="#fff" stroke-width="2"/><g fill="#fff" stroke="#d9e2d9" stroke-width="1.2" stroke-linejoin="round" transform="translate(0 1)">' + shape + '</g><path d="M15 43q17-7 34 0" fill="none" stroke="#fff" stroke-width="1.5" opacity=".35"/></svg></span>';
+            const safeIndex = Number.isInteger(index) && index >= 0 ? index : 0;
+            const shape = PAWN_SHAPES[safeIndex % PAWN_SHAPES.length];
+            const safeColor = getSafePlayerColor(color);
+            return '<span class="pawn pawn-' + size + '" style="--pawn-color:' + safeColor + '" aria-label="Фишка игрока"><svg viewBox="0 0 64 64" role="img" aria-hidden="true"><ellipse cx="32" cy="53" rx="23" ry="6" fill="#17251c" opacity=".22"/><path d="M10 45q0-5 22-5t22 5v5q0 6-22 6T10 50v-5Z" fill="#243b2e" opacity=".65"/><ellipse cx="32" cy="44" rx="22" ry="7" fill="var(--pawn-color)" stroke="#fff" stroke-width="2"/><g fill="#fff" stroke="#d9e2d9" stroke-width="1.2" stroke-linejoin="round" transform="translate(0 1)">' + shape + '</g><path d="M15 43q17-7 34 0" fill="none" stroke="#fff" stroke-width="1.5" opacity=".35"/></svg></span>';
         }
 
         const BOARD_CELLS = [
@@ -1417,6 +2656,36 @@
             { id: 38, name: "Налог", type: "tax", icon: "💍", price: 100 },
             { id: 39, name: "Арбат", type: "street", color: "var(--c-darkblue)", price: 400, rent: 50, housePrice: 200 }
         ];
+
+        // Тарифы аренды по карточкам собственности: [без домов, 1, 2, 3, 4 дома, отель].
+        // Это данные карточек классической американской редакции, а не общие множители.
+        const STREET_RENT_LEVELS = Object.freeze({
+            1: [2, 10, 30, 90, 160, 250],
+            3: [4, 20, 60, 180, 320, 450],
+            6: [6, 30, 90, 270, 400, 550],
+            8: [6, 30, 90, 270, 400, 550],
+            9: [8, 40, 100, 300, 450, 600],
+            11: [10, 50, 150, 450, 625, 750],
+            13: [10, 50, 150, 450, 625, 750],
+            14: [12, 60, 180, 500, 700, 900],
+            16: [14, 70, 200, 550, 750, 950],
+            18: [14, 70, 200, 550, 750, 950],
+            19: [16, 80, 220, 600, 800, 1000],
+            21: [18, 90, 250, 700, 875, 1050],
+            23: [18, 90, 250, 700, 875, 1050],
+            24: [20, 100, 300, 750, 925, 1100],
+            26: [22, 110, 330, 800, 975, 1150],
+            27: [22, 110, 330, 800, 975, 1150],
+            29: [24, 120, 360, 850, 1025, 1200],
+            31: [26, 130, 390, 900, 1100, 1275],
+            32: [26, 130, 390, 900, 1100, 1275],
+            34: [28, 150, 450, 1000, 1200, 1400],
+            37: [35, 175, 500, 1100, 1300, 1500],
+            39: [50, 200, 600, 1400, 1700, 2000]
+        });
+        function getStreetRentLevels(cellId) {
+            return STREET_RENT_LEVELS[cellId] || null;
+        }
 
         // Полные колоды по 16 карт: перемешиваются в начале партии и идут по кругу.
         const CHANCE_CARDS = [
@@ -1473,6 +2742,7 @@
         let peer = null, hostConn = null, clientConns = [];
         let isHost = false, myId = '', activeRoomId = '';
         let players = [], ownedCells = {}, currentTurnIndex = 0, turnPhase = 'ROLL', selectedCellId = null;
+        let lastRenderedPositions = {};
         let pendingTrade = null;
         let consecutiveDoubles = 0;
         let lastDice = [1, 1];
@@ -1485,6 +2755,8 @@
         let pendingCardAckId = null;
         let pendingDrawnCard = null;
         let bankruptcyAuctionQueue = [];
+        let financeLedger = [];
+        let finalResultsShown = false;
         let pendingTradeOffers = {};
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1514,8 +2786,12 @@
             const sameColorCells = BOARD_CELLS.filter(c => c.color === cell.color);
             const hasMonopoly = sameColorCells.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === ownerId && !ownedCells[c.id].mortgaged);
             if (houses === 0) return hasMonopoly ? cell.rent * 2 : cell.rent;
-            const multipliers = [1, 5, 15, 45, 80, 125]; 
-            return cell.rent * multipliers[houses];
+            const rentLevels = getStreetRentLevels(cellId);
+            if (!rentLevels) {
+                console.error('Missing rent schedule for street:', cellId);
+                return cell.rent;
+            }
+            return rentLevels[Math.min(5, Math.max(1, houses))];
         }
 
         function renderBoard() {
@@ -1526,10 +2802,11 @@
                 const pos = getGridCoords(cell.id);
                 const owner = ownedCells[cell.id];
                 const div = document.createElement('div');
-                div.className = `cell ${cell.type === 'corner' ? 'corner' : ''} ${owner ? 'owned' : ''}`;
+                const activePlayerOnCell = players[currentTurnIndex] && players[currentTurnIndex].pos === cell.id;
+                div.className = `cell ${cell.type === 'corner' ? 'corner' : ''} ${owner ? 'owned' : ''} ${activePlayerOnCell ? 'active-landing' : ''}`;
                 div.style.gridRow = pos.row;
                 div.style.gridColumn = pos.col;
-                div.onclick = () => { selectedCellId = cell.id; syncUI(); };
+                div.onclick = () => { selectedCellId = cell.id; syncUI(); showPropertyDetail(cell.id); };
 
                 let buildingsHTML = '';
                 if (owner && owner.houses > 0) {
@@ -1559,13 +2836,17 @@
         }
 
         // --- СЕТЬ ---
+        function normalizePlayerName(value, fallback = 'Игрок') {
+            const normalized = String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 24);
+            return normalized || fallback;
+        }
         function createRoom() {
             isHost = true; 
             peer = new Peer({ host: 'xfenix.ru', port: 443, secure: true, path: '/' });
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: document.getElementById('username').value || 'Хост', money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_ICONS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -1587,17 +2868,19 @@
                 hostConn.on('open', () => {
                     document.getElementById('lobby').style.display = 'none';
                     document.getElementById('game-screen').style.display = 'grid';
-                    hostConn.send({ type: 'JOIN', name: document.getElementById('username').value || 'Игрок' });
+                    hostConn.send({ type: 'JOIN', name: normalizePlayerName(document.getElementById('username').value) });
                 });
                 hostConn.on('data', (data) => handleClientData(data));
             });
         }
 
         function handleHostData(data, conn) {
-            if (data.type === 'JOIN' && players.length < 6) {
+            if (data.type === 'JOIN' && players.length < MAX_PLAYERS && !players.some(player => player.id === conn.peer)) {
                 const idx = players.length;
-                players.push({ id: conn.peer, name: data.name, money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0, jailCards: [] });
-                broadcastState(); broadcastLog('Система', `${data.name} в игре.`);
+                players.push({ id: conn.peer, name: normalizePlayerName(data.name), money: 1500, pos: 0, color: PLAYER_COLORS[idx], icon: TOKEN_ICONS[idx], inJail: false, jailTurns: 0, jailCards: [] });
+                broadcastState(); broadcastLog('Система', `${normalizePlayerName(data.name)} в игре.`);
+            } else if (data.type === 'JOIN') {
+                conn.send({ type: 'ROOM_FULL', maxPlayers: MAX_PLAYERS });
             } else if (data.type === 'ROLL') { processRoll(conn.peer); }
             else if (data.type === 'PAY_JAIL') { processPayJail(conn.peer); }
             else if (data.type === 'USE_JAIL_CARD') { processUseJailCard(conn.peer); }
@@ -1640,12 +2923,13 @@
                 auctionState = data.auctionState || null;
                 gameOver = !!data.gameOver; winnerId = data.winnerId || null;
                 chanceDeck = data.chanceDeck || chanceDeck; chestDeck = data.chestDeck || chestDeck;
-                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardPayments = data.pendingCardPayments ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null;
+                bankHouses = data.bankHouses ?? bankHouses; bankHotels = data.bankHotels ?? bankHotels; pendingDebt = data.pendingDebt ?? null; pendingCardPayments = data.pendingCardPayments ?? null; pendingCardAckId = data.pendingCardAckId ?? null; pendingDrawnCard = data.pendingDrawnCard ?? null; financeLedger = Array.isArray(data.financeLedger) ? data.financeLedger : financeLedger;
                 if(pendingCardAckId===myId && pendingDrawnCard && !pendingDebt && !pendingCardPayments) showDrawnCard(pendingDrawnCard.type,pendingDrawnCard.card,pendingDrawnCard.playerName);
                 else {const cardOverlay=document.getElementById('drawn-card-overlay');if(cardOverlay)cardOverlay.style.display='none';}
                 renderAuction();
                 if (data.dice) playDiceAnim(data.dice[0], data.dice[1], syncUI); else syncUI();
             } else if (data.type === 'LOG') { appendLog(data.name, data.text); }
+            else if (data.type === 'ROOM_FULL') { alert('Комната заполнена. Максимум игроков: ' + (data.maxPlayers || 8) + '.'); if (hostConn) hostConn.close(); if (peer) peer.destroy(); document.getElementById('game-screen').style.display = 'none'; document.getElementById('lobby').style.display = 'flex'; }
             else if (data.type === 'TRADE_OFFER') { handleTradeRequest(data); }
         }
 
@@ -1921,7 +3205,10 @@
             if (p && !gameOver && !pendingCardAckId && !auctionState && p.id === peerId && turnPhase === 'ACTION' && isPurchasableCell(cell) && !ownedCells[cell.id] && p.money >= cell.price) {
                 p.money -= cell.price;
                 ownedCells[cell.id] = { ownerId: p.id, color: p.color, houses: 0, mortgaged: false };
-                broadcastState(); broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
+                broadcastState();
+                broadcastLog('🔑 Покупка', `${p.name} купил «${cell.name}».`);
+                animateBoardEvent(cell.id, 'is-purchased');
+                showGameToast('Недвижимость приобретена', `${cell.name} теперь принадлежит ${p.name}.`);
             }
         }
 
@@ -1929,7 +3216,7 @@
             const p = players[currentTurnIndex];
             const cell = BOARD_CELLS[cellId];
             if (!p || gameOver || pendingDebt || pendingCardAckId || auctionState || p.id !== peerId || (turnPhase !== 'ACTION' && turnPhase !== 'ROLL') || !cell || !ownedCells[cellId] || ownedCells[cellId].ownerId !== p.id) return;
-            
+
             const group = BOARD_CELLS.filter(c => c.type === 'street' && c.color === cell.color);
             const groupOwned = group.every(c => ownedCells[c.id] && ownedCells[c.id].ownerId === p.id && !ownedCells[c.id].mortgaged);
             const minHouses = Math.min(...group.map(c => ownedCells[c.id]?.houses || 0));
@@ -1941,6 +3228,8 @@
                 ownedCells[cellId].houses++;
                 broadcastState();
                 broadcastLog('🏗️ Стройка', `${p.name} построил здание на «${cell.name}».`);
+                animateBoardEvent(cellId, 'is-building');
+                showGameToast(currentBuildings===4?'Отель построен':'Дом построен', `${cell.name} · ${currentBuildings===4?'Отель':`дом ${currentBuildings+1} из 4`}.`);
             }
         }
 
@@ -2034,12 +3323,18 @@
         function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
         function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
         function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
-        function renderAuction(){const modal=document.getElementById('modal-auction'),details=document.getElementById('auction-details');if(!modal||!details)return;if(!auctionState||!auctionState.active){modal.style.display='none';return;}const cell=BOARD_CELLS[auctionState.cellId],leader=players.find(p=>p.id===auctionState.highBidder),me=players.find(p=>p.id===myId);details.innerHTML='<b>'+cell.name+'</b><br>Текущая ставка: <b>$'+auctionState.highBid+'</b><br>Лидер: '+(leader?leader.name:'нет')+'<br>Пас: '+auctionState.passed.length+'/'+players.length;modal.style.display='flex';const input=document.getElementById('auction-bid-input');if(input&&me){input.min=auctionState.highBid+1;input.max=me.money;if(Number(input.value)<=auctionState.highBid)input.value=auctionState.highBid+1;}const buttons=modal.querySelectorAll('button'),passed=me&&auctionState.passed.includes(me.id);if(buttons[0])buttons[0].disabled=!me||passed||me.money<=auctionState.highBid;if(buttons[1])buttons[1].disabled=!me||passed||me.id===auctionState.highBidder;}
+        function renderAuction(){const modal=document.getElementById('modal-auction'),details=document.getElementById('auction-details');if(!modal||!details)return;if(!auctionState||!auctionState.active){modal.style.display='none';return;}const cell=BOARD_CELLS[auctionState.cellId],leader=players.find(p=>p.id===auctionState.highBidder),me=players.find(p=>p.id===myId);details.innerHTML='<b>'+escapeFinanceText(cell?.name || 'Недвижимость')+'</b><br>Текущая ставка: <b>$'+Number(auctionState.highBid || 0)+'</b><br>Лидер: '+escapeFinanceText(leader?.name || 'нет')+'<br>Пас: '+auctionState.passed.length+'/'+players.length;modal.style.display='flex';const input=document.getElementById('auction-bid-input');if(input&&me){input.min=auctionState.highBid+1;input.max=me.money;if(Number(input.value)<=auctionState.highBid)input.value=auctionState.highBid+1;}const buttons=modal.querySelectorAll('button'),passed=me&&auctionState.passed.includes(me.id);if(buttons[0])buttons[0].disabled=!me||passed||me.money<=auctionState.highBid;if(buttons[1])buttons[1].disabled=!me||passed||me.id===auctionState.highBidder;}
         // --- ТОРГОВЛЯ ---
         function openTradeModal() {
             const select = document.getElementById('trade-target-select');
-            select.innerHTML = '';
-            players.forEach(p => { if (p.id !== myId) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+            select.replaceChildren();
+            players.forEach(p => {
+                if (p.id === myId) return;
+                const option = document.createElement('option');
+                option.value = String(p.id);
+                option.textContent = String(p.name ?? 'Игрок');
+                select.appendChild(option);
+            });
             if (players.length < 2) return alert("Недостаточно игроков для обмена.");
             document.getElementById('modal-trade-offer').style.display = 'flex';
             updateTradeModalProps();
@@ -2090,16 +3385,20 @@
         function handleTradeRequest(data) {
             pendingTrade = data;
             const detailsDiv = document.getElementById('trade-request-details');
-            let giveText = data.requestMoney > 0 ? `<b style="color:#ef4444">$${data.requestMoney}</b><br>` : '';
-            data.requestProps.forEach(id => giveText += `• ${BOARD_CELLS[id].name}<br>`);
+            const requestMoney = Math.max(0, Math.floor(Number(data.requestMoney) || 0));
+            const offerMoney = Math.max(0, Math.floor(Number(data.offerMoney) || 0));
+            const requestProps = Array.isArray(data.requestProps) ? data.requestProps : [];
+            const offerProps = Array.isArray(data.offerProps) ? data.offerProps : [];
+            let giveText = requestMoney > 0 ? `<b style="color:#ef4444">$${requestMoney}</b><br>` : '';
+            requestProps.forEach(id => { const cell = BOARD_CELLS[Number(id)]; if (cell) giveText += `• ${escapeFinanceText(cell.name)}<br>`; });
             if(!giveText) giveText = "Ничего<br>";
 
-            let getText = data.offerMoney > 0 ? `<b style="color:#10b981">$${data.offerMoney}</b><br>` : '';
-            data.offerProps.forEach(id => getText += `• ${BOARD_CELLS[id].name}<br>`);
+            let getText = offerMoney > 0 ? `<b style="color:#10b981">$${offerMoney}</b><br>` : '';
+            offerProps.forEach(id => { const cell = BOARD_CELLS[Number(id)]; if (cell) getText += `• ${escapeFinanceText(cell.name)}<br>`; });
             if(!getText) getText = "Ничего<br>";
 
             detailsDiv.innerHTML = `
-                <b>Игрок ${data.fromName} предлагает сделку!</b><br><br>
+                <b>Игрок ${escapeFinanceText(data.fromName)} предлагает сделку!</b><br><br>
                 <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
                     <div style="margin-bottom:10px;"><span style="color:#ef4444; font-weight:700;">Вы отдаете:</span><br>${giveText}</div>
                     <div><span style="color:#10b981; font-weight:700;">Вы получаете:</span><br>${getText}</div>
@@ -2202,15 +3501,188 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard};
+            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard,financeLedger};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
-        function appendLog(n, t) { 
-            const b = document.getElementById('chat-messages'); 
-            b.innerHTML += `<div style="margin-bottom:4px; line-height:1.4;"><b style="color:#94a3b8;">${n}:</b> <span style="color:#e2e8f0;">${t}</span></div>`; 
-            b.scrollTop = b.scrollHeight; 
+        function recordFinancialEvent(name, message) {
+            const title=String(name||''), body=String(message||'');
+            const amountMatch=body.match(/\$\s?([\d,]+)/);
+            const amount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):0;
+            if(!/оплат|плат|покуп|купил|аренд|рент|налог|ипотек|выкуп|залож|стро|дом|отел|аукцион|банкрот|получил|зарплат|долг|штраф|передал/i.test(title+' '+body))return;
+            financeLedger.unshift({title,body,amount,at:Date.now()});
+            financeLedger=financeLedger.slice(0,60);
+            renderFinanceDashboard();
         }
+        function calculatePlayerAssets(playerId) {
+            let propertyValue=0,buildingValue=0,mortgageDebt=0,propertyCount=0;
+            Object.keys(ownedCells).forEach(id=>{
+                const asset=ownedCells[id],cell=BOARD_CELLS[Number(id)];
+                if(!asset||asset.ownerId!==playerId||!cell)return;
+                propertyCount++; propertyValue+=Number(cell.price)||0;
+                if(asset.houses)buildingValue+=(asset.houses===5?5:asset.houses)*(Number(cell.housePrice)||0);
+                if(asset.mortgaged)mortgageDebt+=Math.ceil((Number(cell.price)||0)*.55); // 50% mortgage principal + 10% interest on that principal.
+            });
+            return {propertyValue,buildingValue,mortgageDebt,propertyCount};
+        }
+        function getPlayerNetWorth(player){const a=calculatePlayerAssets(player.id);return (Number(player.money)||0)+a.propertyValue+a.buildingValue-a.mortgageDebt;}
+        function escapeFinanceText(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+        function renderFinanceDashboard(){
+            const me=players.find(p=>p.id===myId);
+            if(me){const a=calculatePlayerAssets(me.id);
+                document.getElementById('finance-net-worth').textContent='$'+getPlayerNetWorth(me).toLocaleString('ru-RU');
+                document.getElementById('finance-assets-value').textContent='$'+(a.propertyValue+a.buildingValue).toLocaleString('ru-RU');
+                document.getElementById('finance-debt-value').textContent='$'+a.mortgageDebt.toLocaleString('ru-RU');}
+            const board=document.getElementById('finance-leaderboard');
+            if(board)board.innerHTML=[...players].sort((a,b)=>getPlayerNetWorth(b)-getPlayerNetWorth(a)).map((p,i)=>`<div class="finance-rank-row"><span>${i+1}</span><span>${escapeFinanceText(p.name)}</span><strong>$${getPlayerNetWorth(p).toLocaleString('ru-RU')}</strong></div>`).join('');
+            const history=document.getElementById('finance-history');
+            if(history)history.innerHTML=financeLedger.slice(0,6).map(e=>`<div class="finance-history-row"><span><b>${escapeFinanceText(e.title)}</b><small>${escapeFinanceText(e.body)}</small></span>${e.amount?`<strong>$${e.amount.toLocaleString('ru-RU')}</strong>`:''}</div>`).join('')||'<span>Операций пока нет</span>';
+        }
+        function showFinalResults(){
+            const overlay=document.getElementById('final-results-overlay');
+            if(!overlay||finalResultsShown||!gameOver)return;
+            finalResultsShown=true;
+            const winner=players.find(p=>p.id===winnerId);
+            document.getElementById('final-results-title').textContent=winner?'Победитель — '+winner.name:'Партия завершена';
+            document.getElementById('final-results-subtitle').textContent=winner?'Все соперники выбыли из игры.':'В партии не осталось победителя.';
+            document.getElementById('final-results-ranking').innerHTML=[...players].sort((a,b)=>getPlayerNetWorth(b)-getPlayerNetWorth(a)).map((p,i)=>{
+                const a=calculatePlayerAssets(p.id);
+                return `<div class="final-rank-row"><span>${i===0?'♛':i+1+'.'}</span><div><b>${escapeFinanceText(p.name)}</b><small>${a.propertyCount} объектов · наличные $${p.money.toLocaleString('ru-RU')}</small></div><strong>$${getPlayerNetWorth(p).toLocaleString('ru-RU')}</strong></div>`;
+            }).join('');
+            overlay.classList.add('is-open');
+        }
+        function closeFinalResults(){document.getElementById('final-results-overlay')?.classList.remove('is-open');}
+
+        function appendLog(n, t) {
+            recordFinancialEvent(n,t);
+            const b = document.getElementById('chat-messages');
+            if (b) {
+                const line = document.createElement('div');
+                line.className = 'chronicle-line';
+                const name = document.createElement('b');
+                name.className = 'chronicle-name';
+                name.textContent = String(n) + ': ';
+                const message = document.createElement('span');
+                message.textContent = String(t);
+                line.append(name, message);
+                b.appendChild(line);
+                b.scrollTop = b.scrollHeight;
+            }
+            const isPlayerChat = players.some(player => player.name === n);
+            if (!isPlayerChat) showGameToast(n, t);
+        }
+
+        function showGameToast(title, message) {
+            let host = document.getElementById('game-toast-stack');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'game-toast-stack';
+                host.className = 'game-toast-stack';
+                host.setAttribute('aria-live', 'polite');
+                host.setAttribute('aria-atomic', 'false');
+                document.body.appendChild(host);
+            }
+            const toast = document.createElement('div');
+            toast.className = 'game-toast';
+            const mark = document.createElement('span');
+            mark.className = 'game-toast-mark';
+            mark.textContent = /банкрот|долг|налог/i.test(String(title)) ? '!' :
+                /покуп|сделк|имущество|аукцион/i.test(String(title)) ? '◆' :
+                /шанс|казн|карт/i.test(String(title)) ? '✦' : '●';
+            const body = document.createElement('div');
+            body.className = 'game-toast-body';
+            const heading = document.createElement('strong');
+            heading.textContent = String(title || 'Событие');
+            const copy = document.createElement('span');
+            copy.textContent = String(message || '');
+            body.append(heading, copy);
+            toast.append(mark, body);
+            host.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('is-visible'));
+            window.setTimeout(() => {
+                toast.classList.remove('is-visible');
+                window.setTimeout(() => toast.remove(), 260);
+            }, 3600);
+            while (host.children.length > 4) host.firstElementChild.remove();
+        }
+
+        function showPropertyDetail(cellId) {
+            const cell = BOARD_CELLS[Number(cellId)];
+            const overlay = document.getElementById('property-detail-overlay');
+            if (!cell || !overlay) return;
+            const asset = ownedCells[cell.id];
+            const owner = asset ? players.find(player => player.id === asset.ownerId) : null;
+            const color = cell.color && cell.color.startsWith('var(') ? getComputedStyle(document.documentElement).getPropertyValue(cell.color.slice(4,-1)).trim() : (cell.color || '#315640');
+            document.getElementById('property-detail-color').style.background = color || '#315640';
+            document.getElementById('property-detail-title').textContent = cell.name;
+            document.getElementById('property-detail-price').textContent = cell.price ? `Стоимость: $${cell.price}` : (cell.sub || 'Особая клетка');
+            document.getElementById('property-detail-owner').textContent = owner ? `Владелец: ${owner.name}${asset.mortgaged ? ' · заложено' : ''}` : (isPurchasableCell(cell) ? 'Собственность банка · свободно' : 'Особая клетка игрового поля');
+
+            const rents = document.getElementById('property-detail-rents');
+            rents.replaceChildren();
+            if (cell.type === 'street') {
+                const group = BOARD_CELLS.filter(item => item.type === 'street' && item.color === cell.color);
+                const rentLevels = getStreetRentLevels(cell.id) || [cell.rent, cell.rent, cell.rent, cell.rent, cell.rent, cell.rent];
+                const rows = [
+                    ['Базовая аренда', `$${rentLevels[0]}`],
+                    ['Полный комплект', `$${rentLevels[0] * 2}`],
+                    ['1 дом', `$${rentLevels[1]}`],
+                    ['2 дома', `$${rentLevels[2]}`],
+                    ['3 дома', `$${rentLevels[3]}`],
+                    ['4 дома', `$${rentLevels[4]}`],
+                    ['Отель', `$${rentLevels[5]}`]
+                ];
+                rows.forEach(([label,value]) => {
+                    const row=document.createElement('div'); row.className='property-rent-row';
+                    const a=document.createElement('span'); a.textContent=label;
+                    const b=document.createElement('strong'); b.textContent=value;
+                    row.append(a,b); rents.appendChild(row);
+                });
+                document.getElementById('property-detail-footer').textContent = `Строительство дома: $${cell.housePrice} · В группе ${group.length} ${group.length===2?'улицы':'улиц'}`;
+            } else if (cell.type === 'railroad') {
+                [25,50,100,200].forEach((value,index) => {
+                    const row=document.createElement('div'); row.className='property-rent-row';
+                    const a=document.createElement('span'); a.textContent=`${index+1} ${index===0?'дорога':'дороги'}`;
+                    const b=document.createElement('strong'); b.textContent=`$${value}`;
+                    row.append(a,b); rents.appendChild(row);
+                });
+                document.getElementById('property-detail-footer').textContent='Аренда зависит от количества железных дорог у владельца.';
+            } else if (cell.type === 'utility') {
+                [['Одна коммунальная служба','4 × сумма кубиков'],['Обе службы','10 × сумма кубиков']].forEach(([label,value]) => {
+                    const row=document.createElement('div'); row.className='property-rent-row';
+                    const a=document.createElement('span'); a.textContent=label;
+                    const b=document.createElement('strong'); b.textContent=value;
+                    row.append(a,b); rents.appendChild(row);
+                });
+                document.getElementById('property-detail-footer').textContent='Аренда определяется броском кубиков.';
+            } else {
+                const row=document.createElement('div'); row.className='property-rent-row';
+                row.textContent = cell.type === 'tax' ? `Платёж банку: $${cell.price}` : (cell.sub || 'Эффект определяется правилами клетки.');
+                rents.appendChild(row);
+                document.getElementById('property-detail-footer').textContent='Эта клетка не является объектом недвижимости.';
+            }
+
+            const action=document.getElementById('property-detail-action');
+            action.textContent = isPurchasableCell(cell) ? (asset ? 'Выбрать для управления' : 'Посмотреть на поле') : 'Понятно';
+            overlay.dataset.cellId=String(cell.id);
+            overlay.style.display='flex';
+            requestAnimationFrame(()=>overlay.classList.add('is-open'));
+        }
+
+        function closePropertyDetail() {
+            const overlay=document.getElementById('property-detail-overlay');
+            if(!overlay)return;
+            overlay.classList.remove('is-open');
+            window.setTimeout(()=>{ if(!overlay.classList.contains('is-open')) overlay.style.display='none'; },180);
+        }
+
+        function usePropertyDetail() {
+            const overlay=document.getElementById('property-detail-overlay');
+            const id=Number(overlay?.dataset.cellId);
+            if(Number.isInteger(id)){ selectedCellId=id; syncUI(); }
+            closePropertyDetail();
+        }
+
         function sendChat() {
             const i = document.getElementById('chat-input'), txt = i.value.trim(); if(!txt) return;
             const name = document.getElementById('username').value || 'Игрок';
@@ -2241,7 +3713,7 @@
             let rollInterval = setInterval(() => {
                 renderDieFace(die1, Math.floor(Math.random() * 6) + 1);
                 renderDieFace(die2, Math.floor(Math.random() * 6) + 1);
-            }, 60);
+            }, 125);
 
             setTimeout(() => {
                 clearInterval(rollInterval);
@@ -2249,9 +3721,88 @@
                 wrap1.classList.remove('rolling'); wrap2.classList.remove('rolling');
 
                 renderDieFace(die1, d1); renderDieFace(die2, d2);
-                rollBtn.disabled = false; 
+                die1.classList.add('die-landed'); die2.classList.add('die-landed');
+                window.setTimeout(() => { die1.classList.remove('die-landed'); die2.classList.remove('die-landed'); }, 520);
+                rollBtn.disabled = false;
                 if(cb) cb();
-            }, 800); 
+            }, 750); 
+        }
+
+        function animateBoardEvent(cellId, effectClass) {
+            const tokenLayer = document.getElementById(`tokens-cell-${Number(cellId)}`);
+            const cell = tokenLayer ? tokenLayer.closest('.cell') : null;
+            if (!cell) return;
+            cell.classList.remove('is-purchased','is-building');
+            void cell.offsetWidth;
+            cell.classList.add(effectClass);
+            const buildings = cell.querySelector('.buildings-layer');
+            if (buildings && effectClass === 'is-building') {
+                buildings.classList.remove('building-pop');
+                void buildings.offsetWidth;
+                buildings.classList.add('building-pop');
+            }
+            window.setTimeout(() => {
+                cell.classList.remove(effectClass);
+                if (buildings) buildings.classList.remove('building-pop');
+            }, 1250);
+        }
+
+        function animatePawnPath(playerId, fromPos, toPos) {
+            const board = document.getElementById('board');
+            const destination = document.querySelector(`#tokens-cell-${toPos} .board-token[data-player]`);
+            const player = players.find(item => item.id === playerId);
+            if (!board || !destination || !player || fromPos === toPos) return;
+
+            // Only animate normal forward movement (up to one dice roll); teleports stay instantaneous.
+            const steps = (toPos - fromPos + 40) % 40;
+            if (steps < 1 || steps > 12) return;
+
+            const boardRect = board.getBoundingClientRect();
+            const pointFor = (cellId) => {
+                const cell = board.querySelector(`.cell[style*="grid-row"]`);
+                const target = document.querySelector(`#tokens-cell-${cellId}`);
+                if (!target) return null;
+                const r = target.getBoundingClientRect();
+                return { x: r.left - boardRect.left + r.width / 2, y: r.top - boardRect.top + r.height / 2 };
+            };
+            const start = pointFor(fromPos);
+            if (!start) return;
+
+            const ghost = destination.cloneNode(true);
+            ghost.classList.remove('pawn-arrive');
+            ghost.classList.add('pawn-travelling');
+            ghost.removeAttribute('data-player');
+            ghost.style.position = 'absolute';
+            ghost.style.left = `${start.x}px`;
+            ghost.style.top = `${start.y}px`;
+            ghost.style.margin = '0';
+            ghost.style.zIndex = '30';
+            ghost.style.transform = 'translate(-50%,-50%) scale(1.12)';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.transition = 'left 115ms cubic-bezier(.2,.75,.25,1), top 115ms cubic-bezier(.2,.75,.25,1), transform 115ms ease';
+            board.appendChild(ghost);
+            destination.style.opacity = '0';
+
+            let step = 0;
+            const hop = () => {
+                step++;
+                const next = (fromPos + step) % 40;
+                const point = pointFor(next);
+                if (!point) {
+                    ghost.remove();
+                    destination.style.opacity = '';
+                    return;
+                }
+                ghost.style.left = `${point.x}px`;
+                ghost.style.top = `${point.y}px`;
+                ghost.style.transform = `translate(-50%,-50%) scale(${step === steps ? 1 : 1.12})`;
+                if (step < steps) window.setTimeout(hop, 118);
+                else window.setTimeout(() => {
+                    ghost.remove();
+                    destination.style.opacity = '';
+                }, 125);
+            };
+            requestAnimationFrame(() => window.setTimeout(hop, 40));
         }
 
         function syncUI() {
@@ -2306,27 +3857,34 @@
 
             ['left', 'right'].forEach(side => document.getElementById(`${side}-players`).innerHTML = '');
             players.forEach((p, i) => {
+                const playerColor = getSafePlayerColor(p.color);
+                const safePlayerName = escapeFinanceText(normalizePlayerName(p.name));
                 const propsHTML = Object.keys(ownedCells).filter(id => ownedCells[id].ownerId === p.id)
                     .map(id => `<div class="prop-pip" style="background:${BOARD_CELLS[id].color || '#94a3b8'}"></div>`).join('');
                 
                 const jailHTML = p.inJail ? `<div class="jail-badge">⛓️</div>` : '';
 
                 const html = `
-                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${p.color}">
+                    <div class="player-card ${i === currentTurnIndex ? 'active' : ''} ${p.inJail ? 'jailed' : ''}" style="--player-color:${playerColor}">
                         ${jailHTML}
                         <div class="player-identity">
-                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'card')}</span>
-                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${p.name}</span></span>
+                            <span class="player-token-icon">${renderPawn(TOKEN_ICONS.indexOf(p.icon), playerColor, 'card')}</span>
+                            <span class="player-name-wrap"><span class="player-seat">Игрок ${i + 1}</span><span class="player-name">${safePlayerName}</span></span>
                             ${i === currentTurnIndex ? '<span class="player-turn-label">ХОД</span>' : ''}
                         </div>
-                        <div class="player-money">${p.money}</div>
+                        <div class="player-money">${Number(p.money) || 0}</div>
                         <div class="player-props-container">${propsHTML}</div>
                     </div>`;
                 if (p.id !== myId) document.getElementById(i < 3 ? 'left-players' : 'right-players').innerHTML += html;
                 
-                // Отрисовка фишек на доске
-                document.getElementById(`tokens-cell-${p.pos}`).innerHTML += `<div class="board-token" style="--token-color:${p.color}" data-player="${p.name}" title="${p.name}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), p.color, 'board')}</div>`;
+                // Отрисовка фишек на доске: имя вставляется только после HTML-экранирования.
+                const previousPos = lastRenderedPositions[p.id];
+                const moved = previousPos !== undefined && previousPos !== p.pos;
+                const tokenCell = document.getElementById(`tokens-cell-${p.pos}`);
+                if (tokenCell) tokenCell.innerHTML += `<div class="board-token" style="--token-color:${playerColor}" data-player="${safePlayerName}" title="${safePlayerName}">${renderPawn(TOKEN_ICONS.indexOf(p.icon), playerColor, 'board')}</div>`;
+                if (moved) animatePawnPath(p.id, previousPos, p.pos);
             });
+            lastRenderedPositions = Object.fromEntries(players.map(p => [p.id, p.pos]));
 
             const me = players.find(p=>p.id===myId);
             const myAssets = Object.keys(ownedCells).filter(id=>ownedCells[id].ownerId===myId).map(Number);
@@ -2422,6 +3980,8 @@
             }
             document.getElementById('build-btn').style.display = canBuild ? 'inline-block' : 'none';
             if (canBuild) document.getElementById('build-btn').innerText = `Построить ($${inspCell.housePrice})`;
+                    renderFinanceDashboard();
+            if(gameOver) showFinalResults();
         }
 
         function copyInviteLink() { navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${activeRoomId}`); alert('Ссылка скопирована!'); }

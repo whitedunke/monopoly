@@ -64,6 +64,15 @@ function runMonopolyMechanicsSuite() {
   }
 
   // Every test starts from an isolated in-memory match. No real P2P connections are opened.
+  test('Лобби поддерживает до восьми игроков с уникальными цветами и фишками', () => {
+    assert(MAX_PLAYERS === 8, 'Maximum player count should be eight');
+    assert(TOKEN_ICONS.length >= MAX_PLAYERS, 'Not enough token icons for all players');
+    assert(PAWN_SHAPES.length >= MAX_PLAYERS, 'Not enough pawn designs for all players');
+    assert(new Set(PAWN_SHAPES.slice(0, MAX_PLAYERS)).size === MAX_PLAYERS, 'Pawn designs must be unique');
+    assert(PLAYER_COLORS.length >= MAX_PLAYERS, 'Not enough player colors');
+    assert(new Set(PLAYER_COLORS.slice(0, MAX_PLAYERS)).size === MAX_PLAYERS, 'Player colors must be unique');
+  });
+
   test('Игровое поле: 40 уникальных клеток', () => {
     assert(BOARD_CELLS.length === 40, 'Expected 40 board cells');
     assert(new Set(BOARD_CELLS.map(c => c.id)).size === 40, 'Cell IDs are not unique');
@@ -258,19 +267,45 @@ function runMonopolyMechanicsSuite() {
     assert(bankHouses === stock + 2, 'Houses not returned to bank');
   });
 
-  // These probes are expected to expose existing rules gaps. They do not hide failures:
-  // they are reported separately and can be promoted to hard failures after repair.
-  knownGap('Тарифы улиц с 3/4 домами и отелем отличаются от классических', () => {
-    reset();
-    own([1], 'p2');
-    ownedCells[1].houses = 3;
-    const rent3 = calculateRent(1);
-    ownedCells[1].houses = 4;
-    const rent4 = calculateRent(1);
-    ownedCells[1].houses = 5;
-    const hotel = calculateRent(1);
-    return rent3 !== 90 || rent4 !== 160 || hotel !== 250;
+  // Full per-deed schedule from the classic U.S. Monopoly title deeds.
+  test('Аренда всех 22 улиц: полная таблица домов и отелей', () => {
+    const expected = {
+      1:[2,10,30,90,160,250], 3:[4,20,60,180,320,450],
+      6:[6,30,90,270,400,550], 8:[6,30,90,270,400,550], 9:[8,40,100,300,450,600],
+      11:[10,50,150,450,625,750], 13:[10,50,150,450,625,750], 14:[12,60,180,500,700,900],
+      16:[14,70,200,550,750,950], 18:[14,70,200,550,750,950], 19:[16,80,220,600,800,1000],
+      21:[18,90,250,700,875,1050], 23:[18,90,250,700,875,1050], 24:[20,100,300,750,925,1100],
+      26:[22,110,330,800,975,1150], 27:[22,110,330,800,975,1150], 29:[24,120,360,850,1025,1200],
+      31:[26,130,390,900,1100,1275], 32:[26,130,390,900,1100,1275], 34:[28,150,450,1000,1200,1400],
+      37:[35,175,500,1100,1300,1500], 39:[50,200,600,1400,1700,2000]
+    };
+    assert(Object.keys(expected).length === 22, 'Expected a rent schedule for all 22 streets');
+    assert(Object.keys(STREET_RENT_LEVELS).length === 22, 'Game data must define all 22 rent schedules');
+    for (const [rawId, levels] of Object.entries(expected)) {
+      const id = Number(rawId);
+      reset();
+      own([id], 'p2');
+      for (let houses = 0; houses <= 5; houses++) {
+        if (houses > 0) ownedCells[id].houses = houses;
+        assert(calculateRent(id) === levels[houses], 'Wrong rent for ' + BOARD_CELLS[id].name + ' at level ' + houses);
+      }
+      assert(JSON.stringify(getStreetRentLevels(id)) === JSON.stringify(levels), 'Property detail schedule differs for ' + BOARD_CELLS[id].name);
+    }
   });
+
+  test('HTML-экранирование имён участников и безопасная отрисовка предложения обмена', () => {
+    reset();
+    const hostileName = '<img src=x onerror=alert(1)>';
+    const escaped = escapeFinanceText(hostileName);
+    assert(escaped === '&lt;img src=x onerror=alert(1)&gt;', 'HTML metacharacters were not escaped');
+    handleTradeRequest({fromName:hostileName,requestMoney:0,requestProps:[],offerMoney:0,offerProps:[]});
+    const details = document.getElementById('trade-request-details');
+    assert(!details.querySelector('img'), 'Trade request rendered attacker-controlled HTML');
+    assert(details.textContent.includes(hostileName), 'Escaped player name is not visible as text');
+  });
+
+  // These probes are expected to expose any unrelated rules gaps. They do not hide failures:
+  // they are reported separately and can be promoted to hard failures after repair.
 
   knownGap('Карта ближайшей коммунальной службы использует старый бросок вместо нового', () => {
     reset([p('p1',1500,8),p('p2',1500)]);
@@ -381,3 +416,4 @@ function runMonopolyMechanicsSuite() {
   return report;
 }
 window.runMonopolyMechanicsSuite = runMonopolyMechanicsSuite;
+
