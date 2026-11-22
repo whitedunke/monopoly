@@ -3555,7 +3555,7 @@
                 amount <= auctionState.highBid || amount > bidder.money || amount < 1) return;
             auctionState.highBid = amount;
             auctionState.highBidder = peerId;
-            auctionState.deadlineAt = Date.now() + AUCTION_DURATION_MS;
+            auctionState.deadlineAt = Math.max(Date.now() + AUCTION_DURATION_MS, auctionState.deadlineAt + 1);
             scheduleAuctionTimer();
             broadcastLog('🔨 Ставка', bidder.name + ' предлагает $' + amount + '.');
             const remaining = players.filter(player =>
