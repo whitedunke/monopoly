@@ -4,6 +4,8 @@ function runMonopolyMechanicsSuite() {
     id, name, money, pos, color, icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: []
   });
   function reset(playersInput = [p('p1'), p('p2', 1500, 0, 'Игрок 2', '#ef4444')]) {
+    if (typeof clearAuctionTimer === 'function') clearAuctionTimer();
+    serverClockOffsetMs = 0;
     players = playersInput;
     ownedCells = {};
     currentTurnIndex = 0;
@@ -227,6 +229,76 @@ function runMonopolyMechanicsSuite() {
     assert(auctionState === null, 'Auction did not finish');
     assert(ownedCells[1]?.ownerId === 'p2', 'Highest bidder did not receive property');
     assert(players[1].money === 1420, 'Winning bid was not charged');
+  });
+
+  test('Аукцион на двух игроков: после паса второй участник может дать последнюю ставку и победить', () => {
+    reset([p('p1', 1500, 1), p('p2', 1500, 0, 'Игрок 2', '#ef4444')]);
+    processAuctionStart('p1');
+    assert(auctionState?.active, 'Two-player auction did not start');
+    processAuctionPass('p1');
+    assert(auctionState?.active, 'Auction closed after first pass while another player could still bid');
+    processAuctionBid('p2', 125);
+    assert(auctionState === null, 'Auction should finish after the only remaining player bids');
+    assert(ownedCells[1]?.ownerId === 'p2', 'Last bidder did not receive the property');
+    assert(players[1].money === 1375, 'Winning bid was not charged');
+  });
+
+  test('Аукцион на двух игроков: два паса без ставки закрывают торги без победителя', () => {
+    reset([p('p1', 1500, 1), p('p2')]);
+    processAuctionStart('p1');
+    processAuctionPass('p1');
+    assert(auctionState?.active, 'Auction should remain open for the second player');
+    processAuctionPass('p2');
+    assert(auctionState === null, 'Auction did not close after both players passed');
+    assert(!ownedCells[1], 'Property was awarded without a bid');
+    assert(players.every(player => player.money === 1500), 'Money changed in a no-bid auction');
+  });
+
+  test('Аукцион: таймер 15 секунд сбрасывается после каждой успешной ставки', () => {
+    reset([p('p1', 1500, 1), p('p2'), p('p3')]);
+    processAuctionStart('p1');
+    const firstDeadline = auctionState.deadlineAt;
+    assert(firstDeadline >= Date.now() + 14900 && firstDeadline <= Date.now() + 15100, 'Auction did not start with 15 seconds');
+    processAuctionBid('p2', 60);
+    const secondDeadline = auctionState.deadlineAt;
+    assert(secondDeadline > firstDeadline, 'First bid did not reset the timer');
+    processAuctionBid('p1', 80);
+    assert(auctionState.deadlineAt > secondDeadline, 'Second bid did not reset the timer');
+    assert(auctionState.highBidder === 'p1' && auctionState.highBid === 80, 'Highest bid was not updated');
+  });
+
+  test('Аукцион: по истечении таймера победитель получает недвижимость и оплачивает ставку', () => {
+    reset([p('p1', 1500, 1), p('p2')]);
+    processAuctionStart('p1');
+    processAuctionBid('p2', 90);
+    const auctionId = auctionState.auctionId;
+    const expiredDeadline = Date.now() - 1;
+    auctionState.deadlineAt = expiredDeadline;
+    assert(processAuctionTimeout(auctionId, expiredDeadline, Date.now()), 'Expired auction was not finalized');
+    assert(auctionState === null, 'Expired auction remained active');
+    assert(ownedCells[1]?.ownerId === 'p2', 'High bidder did not win on timeout');
+    assert(players[1].money === 1410, 'Winner was not charged on timeout');
+  });
+
+  test('Аукцион: таймаут без ставок закрывает торги без владельца', () => {
+    reset([p('p1', 1500, 1), p('p2')]);
+    processAuctionStart('p1');
+    const auctionId = auctionState.auctionId;
+    const expiredDeadline = Date.now() - 1;
+    auctionState.deadlineAt = expiredDeadline;
+    assert(processAuctionTimeout(auctionId, expiredDeadline, Date.now()), 'No-bid auction did not time out');
+    assert(auctionState === null && !ownedCells[1], 'No-bid timeout incorrectly awarded the property');
+  });
+
+  test('Аукцион: просроченный callback старой ставки не закрывает обновлённые торги', () => {
+    reset([p('p1', 1500, 1), p('p2'), p('p3')]);
+    processAuctionStart('p1');
+    const auctionId = auctionState.auctionId;
+    const oldDeadline = auctionState.deadlineAt;
+    processAuctionBid('p2', 50);
+    assert(auctionState.deadlineAt > oldDeadline, 'Bid did not refresh deadline');
+    assert(!processAuctionTimeout(auctionId, oldDeadline, oldDeadline + 1), 'Stale callback closed the refreshed auction');
+    assert(auctionState?.active && auctionState.highBidder === 'p2', 'Auction did not survive stale callback');
   });
 
   test('Обмен: деньги и недвижимость переходят обеим сторонам', () => {
