@@ -2387,7 +2387,15 @@
             }
         }
 
-        </style>
+                .auction-countdown { margin:0 0 16px; padding:10px 12px; border:1px solid #ded8cb; border-radius:10px; background:#f8f5ec; }
+        .auction-countdown-head { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#465847; font-size:12px; font-weight:800; margin-bottom:7px; }
+        .auction-countdown-head strong { color:#8a6740; font-size:10px; letter-spacing:.06em; }
+        .auction-countdown-track { height:7px; overflow:hidden; border-radius:99px; background:#e5e0d6; }
+        .auction-countdown-fill { width:100%; height:100%; border-radius:99px; background:#47745b; transition:width .2s linear,background .2s linear; }
+        .auction-countdown.is-ending .auction-countdown-head { color:#b45309; }
+        .auction-countdown.is-ending .auction-countdown-fill { background:#d97706; }
+        .auction-bid-btn,.auction-pass-btn { flex:1 1 0; min-width:0; }
+</style>
 </head>
 <body>
 
@@ -2608,7 +2616,24 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="modal-auction"><div class="modal-content"><div class="modal-title">Аукцион недвижимости</div><div id="auction-details" style="line-height:1.7;margin-bottom:14px;"></div><div class="input-group"><label for="auction-bid-input">Ваша ставка ($)</label><input type="number" id="auction-bid-input" min="1" step="1" value="10" style="width:100%;padding:10px;border-radius:8px;"></div><div style="display:flex;gap:10px;"><button class="btn" onclick="submitAuctionBid()">Сделать ставку</button><button class="btn btn-secondary" onclick="passAuction()">Пас</button></div></div></div>
+    <div class="modal-overlay" id="modal-auction">
+        <div class="modal-content">
+            <div class="modal-title">Аукцион недвижимости</div>
+            <div id="auction-details" style="line-height:1.7;margin-bottom:12px;"></div>
+            <div class="auction-countdown" aria-live="polite">
+                <div class="auction-countdown-head"><span id="auction-timer-text">До завершения: 15 сек.</span><strong>15 СЕК.</strong></div>
+                <div class="auction-countdown-track"><div id="auction-timer-fill" class="auction-countdown-fill"></div></div>
+            </div>
+            <div class="input-group">
+                <label for="auction-bid-input">Ваша ставка ($)</label>
+                <input type="number" id="auction-bid-input" min="1" step="1" value="10" style="width:100%;padding:10px;border-radius:8px;">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button class="btn auction-bid-btn" onclick="submitAuctionBid()">Сделать ставку</button>
+                <button class="btn btn-secondary auction-pass-btn" onclick="passAuction()">Пас</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Восемь металлических игровых фигурок. В состоянии партии хранятся ID, не emoji.
@@ -2884,6 +2909,12 @@
         let lastDice = [1, 1];
         let gameOver = false, winnerId = null;
         let auctionState = null;
+        let resolvedAuctionForTurn = null;
+        const AUCTION_DURATION_MS = 15000;
+        let auctionTimerHandle = null;
+        let auctionCountdownTicker = null;
+        let auctionSequence = 0;
+        let serverClockOffsetMs = 0;
         let bankHouses = 32, bankHotels = 12;
         let pendingDebt = null;
         let pendingMortgageCellId = null;
@@ -2899,6 +2930,7 @@
             renderBoard();
             renderDieFace(document.getElementById('die-1'), 1);
             renderDieFace(document.getElementById('die-2'), 1);
+            if (!auctionCountdownTicker) auctionCountdownTicker = window.setInterval(updateAuctionCountdownUI, 200);
             const params = new URLSearchParams(window.location.search);
             if (params.get('room')) document.getElementById('room-code-input').value = params.get('room');
         });
@@ -2982,7 +3014,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; resolvedAuctionForTurn=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -3054,6 +3086,7 @@
 
         function handleClientData(data) {
             if (data.type === 'STATE') {
+                if (Number.isFinite(data.serverTime)) serverClockOffsetMs = data.serverTime - Date.now();
                 players = data.players; ownedCells = data.ownedCells;
                 currentTurnIndex = data.currentTurnIndex; turnPhase = data.turnPhase;
                 auctionState = data.auctionState || null;
@@ -3148,8 +3181,9 @@
             if(auctionState||!bankruptcyAuctionQueue.length||gameOver||players.length<2)return;
             const next=bankruptcyAuctionQueue.shift(),cell=BOARD_CELLS[next.cellId];
             if(!cell||!isPurchasableCell(cell)||ownedCells[next.cellId]){startNextBankruptcyAuction();return;}
-            auctionState={cellId:next.cellId,highBid:0,highBidder:null,passed:[],active:true,source:'bankruptcy',mortgaged:!!next.mortgaged};
-            broadcastLog('🔨 Аукцион банкротства','Недвижимость «'+cell.name+'» выставлена банком на торги.');
+            auctionState={auctionId:++auctionSequence,cellId:next.cellId,highBid:0,highBidder:null,passed:[],active:true,source:'bankruptcy',mortgaged:!!next.mortgaged,deadlineAt:Date.now()+AUCTION_DURATION_MS};
+            scheduleAuctionTimer();
+            broadcastLog('🔨 Аукцион банкротства','Недвижимость «'+cell.name+'» выставлена банком на торги. На ставки даётся 15 секунд.');
         }
 
         function handleBankruptcy(p,creditorId=null) {
@@ -3176,7 +3210,9 @@
             });
             if(removedIndex<currentTurnIndex)currentTurnIndex--;
             players.splice(removedIndex,1);
-            consecutiveDoubles=0;auctionState=null;
+            consecutiveDoubles=0;
+            clearAuctionTimer();
+            auctionState=null;
             if(players.length<=1){
                 gameOver=true;winnerId=players[0]?.id||null;turnPhase='GAME_OVER';
                 bankruptcyAuctionQueue=[];pendingCardPayments=null;pendingCardAckId=null;pendingDrawnCard=null;
@@ -3391,10 +3427,13 @@
             const p = players[currentTurnIndex];
             if (!gameOver && !pendingDebt && !pendingCardAckId && !pendingCardPayments && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
                 const landedCell=BOARD_CELLS[p.pos];
-                if(isPurchasableCell(landedCell)&&!ownedCells[landedCell.id]){
+                const auctionAlreadyResolved = resolvedAuctionForTurn?.playerId === p.id &&
+                    resolvedAuctionForTurn?.cellId === landedCell?.id;
+                if(isPurchasableCell(landedCell)&&!ownedCells[landedCell.id]&&!auctionAlreadyResolved){
                     processAuctionStart(peerId);
                     return;
                 }
+                if (resolvedAuctionForTurn?.playerId === p.id) resolvedAuctionForTurn = null;
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -3408,22 +3447,137 @@
         }
 
         // --- АУКЦИОНЫ И ИПОТЕКА: решения подтверждает хост ---
-        function processAuctionStart(peerId) { const p=players[currentTurnIndex], cell=p&&BOARD_CELLS[p.pos]; if(gameOver||pendingDebt||pendingCardAckId||pendingCardPayments||!p||p.id!==peerId||turnPhase!=='ACTION'||!isPurchasableCell(cell)||ownedCells[cell.id]||auctionState||bankruptcyAuctionQueue.length)return; auctionState={cellId:cell.id,highBid:0,highBidder:null,passed:[],active:true}; broadcastLog('🔨 Аукцион','Торги за «'+cell.name+'» открыты. Минимальная ставка $1.'); broadcastState(); }
-        function processAuctionBid(peerId,amount) { if(gameOver||!auctionState||!auctionState.active||auctionState.passed.includes(peerId))return; const bidder=players.find(p=>p.id===peerId); amount=Math.floor(Number(amount)); if(!bidder||!Number.isFinite(amount)||amount<=auctionState.highBid||amount>bidder.money||amount<1)return; auctionState.highBid=amount; auctionState.highBidder=peerId; broadcastLog('🔨 Ставка',bidder.name+' предлагает $'+amount+'.'); broadcastState(); }
+        function clearAuctionTimer() {
+            if (auctionTimerHandle !== null) {
+                window.clearTimeout(auctionTimerHandle);
+                auctionTimerHandle = null;
+            }
+        }
+        function getAuctionClockNow() {
+            return Date.now() + (isHost ? 0 : serverClockOffsetMs);
+        }
+        function scheduleAuctionTimer() {
+            clearAuctionTimer();
+            if (!isHost || !auctionState?.active || !Number.isFinite(auctionState.deadlineAt)) return;
+            const auctionId = auctionState.auctionId;
+            const deadlineAt = auctionState.deadlineAt;
+            auctionTimerHandle = window.setTimeout(() => {
+                auctionTimerHandle = null;
+                processAuctionTimeout(auctionId, deadlineAt);
+            }, Math.max(0, deadlineAt - Date.now()));
+        }
+        function finalizeAuction(reason = 'all-passed') {
+            if (!auctionState?.active) return false;
+            const finished = auctionState;
+            const cell = BOARD_CELLS[finished.cellId];
+            const winner = finished.highBidder ? players.find(player => player.id === finished.highBidder) : null;
+            if (finished.source !== 'bankruptcy') {
+                const initiatingPlayer = players[currentTurnIndex];
+                resolvedAuctionForTurn = initiatingPlayer ? { playerId: initiatingPlayer.id, cellId: finished.cellId } : null;
+            }
+            clearAuctionTimer();
+            if (winner && cell && isPurchasableCell(cell) && !ownedCells[cell.id] &&
+                finished.highBid > 0 && winner.money >= finished.highBid) {
+                winner.money -= finished.highBid;
+                ownedCells[cell.id] = { ownerId: winner.id, color: winner.color, houses: 0, mortgaged: !!finished.mortgaged };
+                broadcastLog('🏆 Аукцион', winner.name + ' покупает «' + cell.name + '» за $' + finished.highBid + '.');
+            } else {
+                const cellName = cell?.name || 'недвижимость';
+                broadcastLog('Аукцион', reason === 'timeout'
+                    ? 'Время вышло. «' + cellName + '» остаётся без покупателя.'
+                    : 'Торги за «' + cellName + '» завершены без покупателя.');
+            }
+            auctionState = null;
+            startNextBankruptcyAuction();
+            broadcastState();
+            return true;
+        }
+        function processAuctionTimeout(auctionId, deadlineAt, now = Date.now()) {
+            if (!auctionState?.active || auctionState.auctionId !== auctionId || auctionState.deadlineAt !== deadlineAt) return false;
+            if (now < deadlineAt) {
+                scheduleAuctionTimer();
+                return false;
+            }
+            return finalizeAuction('timeout');
+        }
+        function updateAuctionCountdownUI() {
+            const panel = document.querySelector('.auction-countdown');
+            const label = document.getElementById('auction-timer-text');
+            const fill = document.getElementById('auction-timer-fill');
+            if (!panel || !label || !fill) return;
+            if (!auctionState?.active || !Number.isFinite(auctionState.deadlineAt)) {
+                panel.classList.remove('is-ending');
+                label.textContent = 'Ожидание аукциона';
+                fill.style.width = '0%';
+                return;
+            }
+            const remaining = Math.max(0, auctionState.deadlineAt - getAuctionClockNow());
+            const seconds = Math.ceil(remaining / 1000);
+            label.textContent = remaining > 0 ? 'До завершения: ' + seconds + ' сек.' : 'Время вышло — определяем победителя…';
+            fill.style.width = Math.min(100, Math.max(0, remaining / AUCTION_DURATION_MS * 100)) + '%';
+            panel.classList.toggle('is-ending', seconds <= 5);
+            if (remaining <= 0) {
+                const bid = document.querySelector('.auction-bid-btn');
+                const pass = document.querySelector('.auction-pass-btn');
+                if (bid) bid.disabled = true;
+                if (pass) pass.disabled = true;
+            }
+        }
+        function processAuctionStart(peerId) {
+            const player = players[currentTurnIndex];
+            const cell = player && BOARD_CELLS[player.pos];
+            if (gameOver || pendingDebt || pendingCardAckId || pendingCardPayments || !player ||
+                player.id !== peerId || turnPhase !== 'ACTION' || !isPurchasableCell(cell) ||
+                ownedCells[cell.id] || auctionState || bankruptcyAuctionQueue.length ||
+                (resolvedAuctionForTurn?.playerId === player.id && resolvedAuctionForTurn?.cellId === cell.id)) return;
+            auctionState = {
+                auctionId: ++auctionSequence,
+                cellId: cell.id,
+                highBid: 0,
+                highBidder: null,
+                passed: [],
+                active: true,
+                deadlineAt: Date.now() + AUCTION_DURATION_MS
+            };
+            scheduleAuctionTimer();
+            broadcastLog('🔨 Аукцион', 'Торги за «' + cell.name + '» открыты. На первую и каждую следующую ставку даётся 15 секунд.');
+            broadcastState();
+        }
+        function processAuctionBid(peerId, amount) {
+            if (gameOver || !auctionState?.active) return;
+            if (Date.now() >= auctionState.deadlineAt) {
+                processAuctionTimeout(auctionState.auctionId, auctionState.deadlineAt);
+                return;
+            }
+            const bidder = players.find(player => player.id === peerId);
+            amount = Math.floor(Number(amount));
+            if (!bidder || auctionState.passed.includes(peerId) || !Number.isFinite(amount) ||
+                amount <= auctionState.highBid || amount > bidder.money || amount < 1) return;
+            auctionState.highBid = amount;
+            auctionState.highBidder = peerId;
+            auctionState.deadlineAt = Math.max(Date.now() + AUCTION_DURATION_MS, auctionState.deadlineAt + 1);
+            scheduleAuctionTimer();
+            broadcastLog('🔨 Ставка', bidder.name + ' предлагает $' + amount + '.');
+            const remaining = players.filter(player =>
+                player.id !== auctionState.highBidder && !auctionState.passed.includes(player.id));
+            if (!remaining.length) {
+                finalizeAuction('all-passed');
+                return;
+            }
+            broadcastState();
+        }
         function processAuctionPass(peerId) {
-            if(!auctionState||!auctionState.active||peerId===auctionState.highBidder||!players.some(p=>p.id===peerId)||auctionState.passed.includes(peerId))return;
+            if (!auctionState?.active || Date.now() >= auctionState.deadlineAt ||
+                peerId === auctionState.highBidder || !players.some(player => player.id === peerId) ||
+                auctionState.passed.includes(peerId)) return;
             auctionState.passed.push(peerId);
-            const remaining=players.filter(p=>p.id!==auctionState.highBidder&&!auctionState.passed.includes(p.id));
-            if(!remaining.length){
-                const finished=auctionState,cell=BOARD_CELLS[finished.cellId],winner=players.find(p=>p.id===finished.highBidder);
-                if(winner&&cell&&winner.money>=finished.highBid){
-                    winner.money-=finished.highBid;
-                    ownedCells[cell.id]={ownerId:winner.id,color:winner.color,houses:0,mortgaged:!!finished.mortgaged};
-                    broadcastLog('🏆 Аукцион',winner.name+' покупает «'+cell.name+'» за $'+finished.highBid+'.');
-                }else broadcastLog('Аукцион','Торги за «'+(cell?.name||'недвижимость')+'» завершены без покупателя.');
-                auctionState=null;
-                startNextBankruptcyAuction();
-            }else broadcastLog('Аукцион',(players.find(p=>p.id===peerId)?.name||'Игрок')+' пасует.');
+            const remaining = players.filter(player =>
+                player.id !== auctionState.highBidder && !auctionState.passed.includes(player.id));
+            if (!remaining.length) {
+                finalizeAuction('all-passed');
+                return;
+            }
+            broadcastLog('Аукцион', (players.find(player => player.id === peerId)?.name || 'Игрок') + ' пасует.');
             broadcastState();
         }
         function processMortgage(peerId,cellId) { const p=players[currentTurnIndex],cell=BOARD_CELLS[cellId],prop=ownedCells[cellId]; if(gameOver||!p||p.id!==peerId||(turnPhase!=='ACTION'&&turnPhase!=='ROLL')||!cell||!prop||prop.ownerId!==p.id||prop.mortgaged||!cell.price||(pendingDebt&&pendingDebt.debtorId!==p.id))return; if(BOARD_CELLS.some(c=>c.type==='street'&&c.color===cell.color&&ownedCells[c.id]?.ownerId===p.id&&(ownedCells[c.id].houses||0)>0))return; prop.mortgaged=true; const payout=Math.floor(cell.price/2); p.money+=payout; broadcastLog('🏦 Ипотека',p.name+' заложил «'+cell.name+'» и получил $'+payout+'.'); if(pendingDebt?.debtorId===p.id)settlePendingDebt(); broadcastState(); }
@@ -3459,7 +3613,39 @@
         function redeemSelected(){if(isHost)processRedeem(myId,selectedCellId);else if(hostConn)hostConn.send({type:'REDEEM',cellId:selectedCellId});}
         function sellSelectedAsset(){if(selectedCellId===null)return;if(isHost)processSellAsset(myId,selectedCellId);else if(hostConn)hostConn.send({type:'SELL_ASSET',cellId:selectedCellId});}
         function selectEstateAsset(cellId){selectedCellId=Number(cellId);syncUI();}
-        function renderAuction(){const modal=document.getElementById('modal-auction'),details=document.getElementById('auction-details');if(!modal||!details)return;if(!auctionState||!auctionState.active){modal.style.display='none';return;}const cell=BOARD_CELLS[auctionState.cellId],leader=players.find(p=>p.id===auctionState.highBidder),me=players.find(p=>p.id===myId);details.innerHTML='<b>'+escapeFinanceText(cell?.name || 'Недвижимость')+'</b><br>Текущая ставка: <b>$'+Number(auctionState.highBid || 0)+'</b><br>Лидер: '+escapeFinanceText(leader?.name || 'нет')+'<br>Пас: '+auctionState.passed.length+'/'+players.length;modal.style.display='flex';const input=document.getElementById('auction-bid-input');if(input&&me){input.min=auctionState.highBid+1;input.max=me.money;if(Number(input.value)<=auctionState.highBid)input.value=auctionState.highBid+1;}const buttons=modal.querySelectorAll('button'),passed=me&&auctionState.passed.includes(me.id);if(buttons[0])buttons[0].disabled=!me||passed||me.money<=auctionState.highBid;if(buttons[1])buttons[1].disabled=!me||passed||me.id===auctionState.highBidder;}
+        function renderAuction() {
+            const modal = document.getElementById('modal-auction');
+            const details = document.getElementById('auction-details');
+            if (!modal || !details) return;
+            if (!auctionState?.active) {
+                modal.style.display = 'none';
+                updateAuctionCountdownUI();
+                return;
+            }
+            const cell = BOARD_CELLS[auctionState.cellId];
+            const leader = players.find(player => player.id === auctionState.highBidder);
+            const me = players.find(player => player.id === myId);
+            const passed = !!(me && auctionState.passed.includes(me.id));
+            details.innerHTML =
+                '<b>' + escapeFinanceText(cell?.name || 'Недвижимость') + '</b><br>' +
+                'Текущая ставка: <b>$' + Number(auctionState.highBid || 0) + '</b><br>' +
+                'Лидер: ' + escapeFinanceText(leader?.name || 'пока нет') + '<br>' +
+                'Пас: ' + auctionState.passed.length + '/' + players.length;
+            modal.style.display = 'flex';
+            const input = document.getElementById('auction-bid-input');
+            if (input && me) {
+                input.min = auctionState.highBid + 1;
+                input.max = me.money;
+                if (Number(input.value) <= auctionState.highBid) input.value = auctionState.highBid + 1;
+                input.disabled = passed || me.money <= auctionState.highBid;
+            }
+            const bidButton = modal.querySelector('.auction-bid-btn');
+            const passButton = modal.querySelector('.auction-pass-btn');
+            const expired = auctionState.deadlineAt <= getAuctionClockNow();
+            if (bidButton) bidButton.disabled = !me || passed || me.money <= auctionState.highBid || expired;
+            if (passButton) passButton.disabled = !me || passed || me.id === auctionState.highBidder || expired;
+            updateAuctionCountdownUI();
+        }
         // --- ТОРГОВЛЯ ---
         function openTradeModal() {
             const select = document.getElementById('trade-target-select');
@@ -3637,7 +3823,7 @@
 
         function broadcastState() {
             syncUI();
-            const snapshot={type:'STATE',players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard,financeLedger};
+            const snapshot={type:'STATE',serverTime:Date.now(),players,ownedCells,currentTurnIndex,turnPhase,auctionState,gameOver,winnerId,chanceDeck,chestDeck,bankHouses,bankHotels,pendingDebt,pendingCardPayments,pendingCardAckId,pendingDrawnCard,financeLedger};
             clientConns.forEach(c=>c.send(snapshot));
         }
         function broadcastLog(name, text) { appendLog(name, text); clientConns.forEach(c => c.send({ type: 'LOG', name, text })); }
@@ -4064,7 +4250,7 @@
             document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
             document.getElementById('estate-redeem-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&selectedCanRedeem);
             document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
-            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]);
+            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]&&!(resolvedAuctionForTurn?.playerId===activePlayer.id&&resolvedAuctionForTurn?.cellId===activePlayer.pos));
 
             // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
@@ -4096,7 +4282,7 @@
             if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
-            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState && !(resolvedAuctionForTurn?.playerId===myId&&resolvedAuctionForTurn?.cellId===myPosCell.id)) ? 'inline-block' : 'none';
             const selectedOwned = ownedCells[inspCell.id];
             const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
             const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;
