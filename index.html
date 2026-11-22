@@ -2909,6 +2909,7 @@
         let lastDice = [1, 1];
         let gameOver = false, winnerId = null;
         let auctionState = null;
+        let resolvedAuctionForTurn = null;
         const AUCTION_DURATION_MS = 15000;
         let auctionTimerHandle = null;
         let auctionCountdownTicker = null;
@@ -3013,7 +3014,7 @@
 
             peer.on('open', (id) => {
                 myId = id; activeRoomId = id;
-                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
+                players = [{ id: myId, name: normalizePlayerName(document.getElementById('username').value, 'Хост'), money: 1500, pos: 0, color: PLAYER_COLORS[0], icon: TOKEN_IDS[0], inJail: false, jailTurns: 0, jailCards: [] }]; ownedCells={}; currentTurnIndex=0; turnPhase='ROLL'; consecutiveDoubles=0; lastDice=[1,1]; gameOver=false; winnerId=null; auctionState=null; resolvedAuctionForTurn=null; pendingDebt=null; pendingMortgageCellId=null; pendingCardPayments=null; pendingCardAckId=null; pendingDrawnCard=null; bankruptcyAuctionQueue=[]; financeLedger=[]; finalResultsShown=false; pendingTradeOffers={}; bankHouses=32; bankHotels=12; chanceDeck=shuffleDeck([...CHANCE_CARDS]); chestDeck=shuffleDeck([...CHEST_CARDS]);
                 document.getElementById('lobby').style.display = 'none';
                 document.getElementById('game-screen').style.display = 'grid';
                 syncUI();
@@ -3426,10 +3427,13 @@
             const p = players[currentTurnIndex];
             if (!gameOver && !pendingDebt && !pendingCardAckId && !pendingCardPayments && p && p.id === peerId && turnPhase === 'ACTION' && !auctionState) {
                 const landedCell=BOARD_CELLS[p.pos];
-                if(isPurchasableCell(landedCell)&&!ownedCells[landedCell.id]){
+                const auctionAlreadyResolved = resolvedAuctionForTurn?.playerId === p.id &&
+                    resolvedAuctionForTurn?.cellId === landedCell?.id;
+                if(isPurchasableCell(landedCell)&&!ownedCells[landedCell.id]&&!auctionAlreadyResolved){
                     processAuctionStart(peerId);
                     return;
                 }
+                if (resolvedAuctionForTurn?.playerId === p.id) resolvedAuctionForTurn = null;
                 if (lastDice[0] === lastDice[1] && !p.inJail && consecutiveDoubles > 0) {
                     turnPhase = 'ROLL';
                     broadcastLog('🎲 Дубль', p.name + ' получает дополнительный бросок.');
@@ -3467,6 +3471,10 @@
             const finished = auctionState;
             const cell = BOARD_CELLS[finished.cellId];
             const winner = finished.highBidder ? players.find(player => player.id === finished.highBidder) : null;
+            if (finished.source !== 'bankruptcy') {
+                const initiatingPlayer = players[currentTurnIndex];
+                resolvedAuctionForTurn = initiatingPlayer ? { playerId: initiatingPlayer.id, cellId: finished.cellId } : null;
+            }
             clearAuctionTimer();
             if (winner && cell && isPurchasableCell(cell) && !ownedCells[cell.id] &&
                 finished.highBid > 0 && winner.money >= finished.highBid) {
@@ -3520,7 +3528,8 @@
             const cell = player && BOARD_CELLS[player.pos];
             if (gameOver || pendingDebt || pendingCardAckId || pendingCardPayments || !player ||
                 player.id !== peerId || turnPhase !== 'ACTION' || !isPurchasableCell(cell) ||
-                ownedCells[cell.id] || auctionState || bankruptcyAuctionQueue.length) return;
+                ownedCells[cell.id] || auctionState || bankruptcyAuctionQueue.length ||
+                (resolvedAuctionForTurn?.playerId === player.id && resolvedAuctionForTurn?.cellId === cell.id)) return;
             auctionState = {
                 auctionId: ++auctionSequence,
                 cellId: cell.id,
@@ -4241,7 +4250,7 @@
             document.getElementById('estate-mortgage-btn').disabled=!(isMyTurn&&(turnPhase==='ACTION'||turnPhase==='ROLL')&&selectedCanMortgage&&(!pendingDebt||pendingDebt.debtorId===myId));
             document.getElementById('estate-redeem-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&selectedCanRedeem);
             document.getElementById('estate-trade-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&players.length>1);
-            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]);
+            document.getElementById('estate-auction-btn').disabled=!!pendingDebt||!(isMyTurn&&turnPhase==='ACTION'&&activePlayer&&!auctionState&&isPurchasableCell(BOARD_CELLS[activePlayer.pos])&&!ownedCells[activePlayer.pos]&&!(resolvedAuctionForTurn?.playerId===activePlayer.id&&resolvedAuctionForTurn?.cellId===activePlayer.pos));
 
             // Строительство доступно из левой панели управления недвижимостью; кнопка остаётся видимой и объясняет ограничения.
             const buildButton=document.getElementById('estate-build-btn');
@@ -4273,7 +4282,7 @@
             if(gameOver){document.getElementById('turn-banner').innerText=players[0]?'🏆 Победитель: '+players[0].name:'Партия завершена';['roll-btn','pay-jail-btn','jail-card-btn','buy-btn','auction-start-btn','mortgage-btn','redeem-btn','end-turn-btn','trade-btn','build-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
             document.getElementById('trade-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && players.length > 1 && !activePlayer.inJail) ? 'inline-block' : 'none';
             
-            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState) ? 'inline-block' : 'none';
+            document.getElementById('auction-start-btn').style.display = (isMyTurn && turnPhase === 'ACTION' && isPurchasableCell(myPosCell) && !ownedCells[myPosCell.id] && !auctionState && !(resolvedAuctionForTurn?.playerId===myId&&resolvedAuctionForTurn?.cellId===myPosCell.id)) ? 'inline-block' : 'none';
             const selectedOwned = ownedCells[inspCell.id];
             const noBuildingsInGroup = !BOARD_CELLS.some(c => c.type === 'street' && c.color === inspCell.color && ownedCells[c.id]?.ownerId === myId && (ownedCells[c.id].houses || 0) > 0);
             const canMortgage = isMyTurn && selectedOwned && selectedOwned.ownerId === myId && !selectedOwned.mortgaged && inspCell.price && noBuildingsInGroup;

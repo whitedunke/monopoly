@@ -6,6 +6,7 @@ function runMonopolyMechanicsSuite() {
   function reset(playersInput = [p('p1'), p('p2', 1500, 0, 'Игрок 2', '#ef4444')]) {
     if (typeof clearAuctionTimer === 'function') clearAuctionTimer();
     serverClockOffsetMs = 0;
+    resolvedAuctionForTurn = null;
     players = playersInput;
     ownedCells = {};
     currentTurnIndex = 0;
@@ -265,6 +266,18 @@ function runMonopolyMechanicsSuite() {
     processAuctionBid('p1', 80);
     assert(auctionState.deadlineAt > secondDeadline, 'Second bid did not reset the timer');
     assert(auctionState.highBidder === 'p1' && auctionState.highBid === 80, 'Highest bid was not updated');
+  });
+
+  test('После аукциона без ставок игрок может завершить ход без повторного аукциона', () => {
+    reset([p('p1', 1500, 1), p('p2')]);
+    lastDice = [2, 3];
+    processAuctionStart('p1');
+    processAuctionPass('p1');
+    processAuctionPass('p2');
+    assert(auctionState === null && resolvedAuctionForTurn?.playerId === 'p1', 'No-bid auction did not save its resolved landing');
+    processEndTurn('p1');
+    assert(auctionState === null, 'End turn reopened an auction that had already ended');
+    assert(currentTurnIndex === 1 && turnPhase === 'ROLL', 'Player could not finish the turn after a no-bid auction');
   });
 
   test('Аукцион: по истечении таймера победитель получает недвижимость и оплачивает ставку', () => {
